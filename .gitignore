@@ -1,0 +1,12 @@
+.env
+.env.local
+.next
+node_modules
+dist
+coverage
+*.db
+*.db-journal
+prisma/dev.db
+training/data/*.jsonl
+training/outputs/*
+training/checkpoints/*

@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model UserProfile {
+  id                 String           @id @default(cuid())
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  name               String?
+  ageRange           String?
+  profession         String
+  budgetCents        Int
+  /// Allowed values: FRUGAL, VALUE, PREMIUM.
+  spendingStyle      String
+  usedItemsOkay      Boolean          @default(true)
+  accessibilityNeeds String
+  preferences        String
+  problems           String
+  roomConstraints    String
+  inventoryItems     InventoryItem[]
+  recommendations    Recommendation[]
+  savedProducts      SavedProduct[]
+  watchlistAlerts    WatchlistAlert[]
+  recentlyViewedProducts RecentlyViewedProduct[]
+}
+
+model InventoryItem {
+  id               String      @id @default(cuid())
+  userProfileId    String
+  category         String
+  brand            String?
+  model            String?
+  exactModel       String?
+  catalogProductId String?
+  specsJson        String?
+  /// Allowed values: POOR, FAIR, GOOD, EXCELLENT, UNKNOWN.
+  condition        String
+  ageYears         Int?
+  notes            String?
+  /// Allowed values: MANUAL, PHOTO, DEMO.
+  source           String
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  userProfile      UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+
+  @@index([catalogProductId])
+}
+
+model Recommendation {
+  id             String      @id @default(cuid())
+  userProfileId  String
+  category       String
+  productModelId String?
+  score          Int
+  /// Allowed values: LOW, MEDIUM, HIGH, CRITICAL.
+  priority       String
+  problemSolved  String
+  explanation    String
+  createdAt      DateTime    @default(now())
+  userProfile    UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+}
+
+model RecommendationExplanationCache {
+  id               String   @id @default(cuid())
+  recommendationId String
+  productId        String
+  inputHash        String
+  model            String
+  source           String
+  outputJson       String
+  error            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([recommendationId, productId, inputHash])
+  @@index([productId, updatedAt])
+  @@index([source, updatedAt])
+}
+
+model TrainingExample {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  inputJson        String
+  targetOutputJson String
+  source           String
+  qualityRating    Int?
+  notes            String?
+
+  @@index([createdAt])
+  @@index([source, createdAt])
+}
+
+model SavedProduct {
+  id               String      @id @default(cuid())
+  userProfileId    String
+  productModelId   String
+  targetPriceCents Int?
+  notifyThreshold  Int         @default(80)
+  createdAt        DateTime    @default(now())
+  userProfile      UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  watchlistAlerts  WatchlistAlert[]
+}
+
+model WatchlistAlert {
+  id              String      @id @default(cuid())
+  userProfileId   String
+  savedProductId  String
+  productModelId  String
+  title           String
+  message         String
+  oldPriceCents   Int?
+  newPriceCents   Int
+  thresholdCents  Int?
+  scoreAtAlert    Int
+  provider        String
+  url             String?
+  seen            Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  userProfile     UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  savedProduct    SavedProduct @relation(fields: [savedProductId], references: [id], onDelete: Cascade)
+
+  @@index([userProfileId, seen, createdAt])
+  @@index([savedProductId, createdAt])
+  @@index([productModelId, createdAt])
+}
+
+model AvailabilitySnapshot {
+  id             String   @id @default(cuid())
+  productModelId String
+  provider       String
+  title          String   @default("Availability check")
+  brand          String?
+  model          String?
+  retailer       String?
+  available      Boolean
+  priceCents     Int?
+  shippingCents   Int?
+  totalPriceCents Int?
+  url            String?
+  imageUrl       String?
+  condition      String?
+  confidence     Float?
+  checkedAt      DateTime @default(now())
+
+  @@index([productModelId, checkedAt])
+  @@index([provider, checkedAt])
+}
+
+model ApiUsage {
+  id         String   @id @default(cuid())
+  provider   String
+  periodType String
+  periodKey  String
+  callCount  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([provider, periodType, periodKey])
+  @@index([provider, updatedAt])
+}
+
+model PriceRefreshPolicy {
+  provider             String   @id
+  monthlyHardLimit     Int      @default(950)
+  dailySoftLimit       Int      @default(30)
+  minuteHardLimit      Int      @default(8)
+  reserveMonthlyCalls  Int      @default(50)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model JobRun {
+  id                        String   @id @default(cuid())
+  jobName                   String
+  status                    String
+  productsEligible          Int
+  productsChecked           Int
+  productsSkippedDueToQuota Int
+  apiCallsUsed              Int
+  pricesApiCallsUsed        Int      @default(0)
+  remainingMonthlyCalls     Int
+  remainingDailyCalls       Int
+  remainingMinuteCalls      Int
+  createdAt                 DateTime @default(now())
+
+  @@index([jobName, createdAt])
+}
+
+model RecentlyViewedProduct {
+  id             String      @id @default(cuid())
+  userProfileId   String
+  productModelId  String
+  viewedAt        DateTime    @default(now())
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  userProfile     UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([userProfileId, productModelId])
+  @@index([userProfileId, viewedAt])
+}

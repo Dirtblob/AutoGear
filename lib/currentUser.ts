@@ -1,0 +1,226 @@
+import type { InventoryItem as PrismaInventoryItem, UserProfile as PrismaUserProfile } from "@prisma/client";
+import { db } from "@/lib/db";
+import { parseProfileMetadata } from "@/lib/profileMetadata";
+import { hackathonDemoProfile, serializeHackathonDemoProfile } from "@/lib/recommendation/demoMode";
+import type { InventoryCategory, RecommendationInput, RoomConstraint, UserProblem, UserProfile } from "@/lib/recommendation/types";
+import {
+  normalizeInventoryCategories,
+  normalizeRoomConstraints,
+  normalizeUserPreferences,
+  normalizeUserProblems,
+} from "@/lib/recommendation/types";
+
+const CURRENT_USER_ID = hackathonDemoProfile.id;
+
+const defaultRoomConstraints = {
+  deskWidthInches: 44,
+  roomLighting: "mixed" as const,
+  sharesSpace: true,
+  portableSetup: false,
+};
+
+const defaultProfileSeed = {
+  id: CURRENT_USER_ID,
+  ...serializeHackathonDemoProfile(),
+};
+
+const problemKeywords: Array<[UserProblem, string[]]> = [
+  ["eye_strain", ["eye strain", "eyes", "screen glare", "glare"]],
+  ["neck_pain", ["neck", "hunch", "posture"]],
+  ["wrist_pain", ["wrist", "trackpad", "typing fatigue"]],
+  ["back_pain", ["back", "lumbar", "chair discomfort"]],
+  ["slow_computer", ["slow", "lag", "performance", "beachball"]],
+  ["low_productivity", ["productivity", "multitask", "calls", "workflow"]],
+  ["poor_focus", ["focus", "distracting", "noise", "concentration"]],
+  ["bad_lighting", ["lighting", "dark", "dim", "shadow"]],
+];
+
+export interface InventoryListItem {
+  id: string;
+  name: string;
+  category: InventoryCategory;
+  brand: string | null;
+  model: string | null;
+  exactModel: string | null;
+  catalogProductId: string | null;
+  specsJson: string | null;
+  specs?: Record<string, unknown>;
+  condition: "poor" | "fair" | "good" | "excellent" | "unknown";
+  ageYears: number | null;
+  notes: string | null;
+  source: "manual" | "photo" | "demo";
+  displayName: string;
+  painPoints: UserProblem[];
+}
+
+export interface CurrentUserContext {
+  profileRecord: PrismaUserProfile;
+  inventoryRecords: PrismaInventoryItem[];
+  profile: UserProfile;
+  inventory: InventoryListItem[];
+  recommendationInput: RecommendationInput;
+}
+
+function parseJson(value: string | null): unknown {
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function parseSpecs(value: string | null): Record<string, unknown> | undefined {
+  const parsed = parseJson(value);
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : undefined;
+}
+
+function normalizeSpendingStyle(value: string): UserProfile["spendingStyle"] {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "frugal") return "frugal";
+  if (normalized === "value") return "VALUE";
+  if (normalized === "premium") return "premium";
+  return "balanced";
+}
+
+function parseConstraintObject(value: string | null): UserProfile["constraints"] {
+  const parsed = parseJson(value);
+
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const constraints = parsed as Record<string, unknown>;
+
+    return {
+      deskWidthInches: Number(constraints.deskWidthInches ?? defaultRoomConstraints.deskWidthInches),
+      roomLighting:
+        constraints.roomLighting === "low" || constraints.roomLighting === "bright"
+          ? constraints.roomLighting
+          : defaultRoomConstraints.roomLighting,
+      sharesSpace: Boolean(constraints.sharesSpace),
+      portableSetup: Boolean(constraints.portableSetup),
+    };
+  }
+
+  const roomConstraints = normalizeRoomConstraints(value);
+
+  return {
+    deskWidthInches: roomConstraints.includes("limited_desk_width") ? 36 : defaultRoomConstraints.deskWidthInches,
+    roomLighting: roomConstraints.includes("low_light")
+      ? "low"
+      : roomConstraints.includes("bright_lighting")
+        ? "bright"
+        : defaultRoomConstraints.roomLighting,
+    sharesSpace: roomConstraints.includes("shared_space"),
+    portableSetup: roomConstraints.includes("portable_setup"),
+  };
+}
+
+function buildDisplayName(item: Pick<PrismaInventoryItem, "brand" | "model" | "exactModel" | "category">): string {
+  const base = [item.brand, item.model].filter(Boolean).join(" ").trim();
+  if (item.exactModel?.trim()) {
+    return base ? `${base} (${item.exactModel.trim()})` : item.exactModel.trim();
+  }
+
+  if (base) return base;
+  return item.category.replaceAll("_", " ");
+}
+
+function inferPainPoints(item: Pick<PrismaInventoryItem, "notes" | "model" | "exactModel" | "brand">): UserProblem[] {
+  const text = [item.brand, item.model, item.exactModel, item.notes]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return problemKeywords
+    .filter(([, keywords]) => keywords.some((keyword) => text.includes(keyword)))
+    .map(([problem]) => problem);
+}
+
+function mapInventoryItem(record: PrismaInventoryItem): InventoryListItem {
+  const category = normalizeInventoryCategories(record.category)[0] ?? "other";
+  const displayName = buildDisplayName(record);
+
+  return {
+    id: record.id,
+    name: displayName,
+    category,
+    brand: record.brand,
+    model: record.model,
+    exactModel: record.exactModel,
+    catalogProductId: record.catalogProductId,
+    specsJson: record.specsJson,
+    specs: parseSpecs(record.specsJson),
+    condition: record.condition.toLowerCase() as InventoryListItem["condition"],
+    ageYears: record.ageYears ?? null,
+    notes: record.notes,
+    source: record.source.toLowerCase() as InventoryListItem["source"],
+    displayName,
+    painPoints: inferPainPoints(record),
+  };
+}
+
+function mapUserProfile(record: PrismaUserProfile): UserProfile {
+  const roomConstraints = normalizeRoomConstraints(record.roomConstraints) as RoomConstraint[];
+  const constraints = parseConstraintObject(record.roomConstraints);
+
+  return {
+    id: record.id,
+    name: record.name ?? "Current user",
+    ageRange: record.ageRange ?? "Unknown",
+    profession: record.profession,
+    budgetUsd: Math.max(0, Math.round(record.budgetCents / 100)),
+    spendingStyle: normalizeSpendingStyle(record.spendingStyle),
+    preferences: normalizeUserPreferences(record.preferences),
+    problems: normalizeUserProblems(record.problems),
+    accessibilityNeeds: normalizeUserPreferences(record.accessibilityNeeds),
+    roomConstraints,
+    constraints,
+  };
+}
+
+export async function ensureCurrentUserProfile(): Promise<PrismaUserProfile> {
+  return db.userProfile.upsert({
+    where: { id: CURRENT_USER_ID },
+    update: {},
+    create: defaultProfileSeed,
+  });
+}
+
+export async function getCurrentUserContext(): Promise<CurrentUserContext | null> {
+  const profileRecord = await db.userProfile.findUnique({
+    where: { id: CURRENT_USER_ID },
+  });
+
+  if (!profileRecord) return null;
+
+  const inventoryRecords = await db.inventoryItem.findMany({
+    where: { userProfileId: profileRecord.id },
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+  });
+
+  const profile = mapUserProfile(profileRecord);
+  const metadata = parseProfileMetadata(profileRecord.roomConstraints);
+  const inventory = inventoryRecords.map(mapInventoryItem);
+  const exactCurrentModelsProvided = inventoryRecords.some(
+    (item) => Boolean(item.model?.trim()) || Boolean(item.exactModel?.trim()),
+  );
+  const deviceType =
+    metadata.deviceType === "unknown" && (inventory.some((item) => item.category === "laptop") || profile.constraints.portableSetup)
+      ? "laptop"
+      : metadata.deviceType;
+
+  return {
+    profileRecord,
+    inventoryRecords,
+    profile,
+    inventory,
+    recommendationInput: {
+      profile,
+      inventory,
+      exactCurrentModelsProvided: inventory.length > 0 ? exactCurrentModelsProvided : undefined,
+      deviceType,
+      ports: metadata.ports,
+      usedItemsOkay: profileRecord.usedItemsOkay,
+    },
+  };
+}
