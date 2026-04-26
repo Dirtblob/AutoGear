@@ -4,7 +4,6 @@ import { DeviceDeltaComparison } from "@/components/DeviceDeltaComparison";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { ScoreBreakdownCard } from "@/components/ui/ScoreBreakdownCard";
-import { productCatalog } from "@/data/productCatalog";
 import { buildRecommendationNarrationId } from "@/lib/llm/explanationCache";
 import type { RecommendationNarrationSource } from "@/lib/llm/types";
 import { readCachedRecommendationNarrations } from "@/lib/llm/recommendationNarrator";
@@ -28,6 +27,7 @@ import {
 import { getCategoryRecommendations } from "@/lib/recommendation/categoryEngine";
 import { getProductRecommendations } from "@/lib/recommendation/productEngine";
 import { categoryLabels } from "@/lib/recommendation/scoring";
+import { formatUsd } from "@/lib/ui/format";
 import { getAvailabilityForProduct, loadRecommendationContext } from "@/lib/userData";
 import { refreshRecommendationExplanation, toggleSavedProduct } from "./actions";
 
@@ -155,10 +155,14 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
     usedItemsOkay,
     ports,
     deviceType,
+    privateProfile,
+    candidateProducts,
   } = context;
   const recommendationInput = {
     profile,
     inventory,
+    candidateProducts,
+    privateProfile,
     exactCurrentModelsProvided,
     ports,
     deviceType,
@@ -170,7 +174,7 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
   const categoryRecommendations = getCategoryRecommendations(recommendationInput);
   const productsByCategory = categoryRecommendations.map((categoryRecommendation) => ({
     categoryRecommendation,
-    recommendations: getProductRecommendations(recommendationInput, categoryRecommendation, productCatalog),
+    recommendations: getProductRecommendations(recommendationInput, categoryRecommendation, candidateProducts),
   }));
   const categoryViews = sortCategoryViews(
     productsByCategory.map(({ categoryRecommendation, recommendations }) => {
@@ -267,7 +271,7 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                   Upgrade opportunities for {profile.name}
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-white/72">
-                  {profile.profession} profile, ${profile.budgetUsd} budget, {inventory.length} inventory items, and{" "}
+                  {profile.profession} profile, {formatUsd(profile.budgetUsd)} budget, {inventory.length} inventory items, and{" "}
                   {profile.problems.length} reported pain points. Filters refine what shows up without hiding why the
                   engine scored things the way it did.
                 </p>
@@ -299,7 +303,7 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
 
               <div className="grid gap-3 sm:grid-cols-2">
                 {[
-                  ["Budget", `$${profile.budgetUsd}`],
+                  ["Budget", formatUsd(profile.budgetUsd)],
                   ["Top categories", String(visibleCategoryViews.length)],
                   ["Specific models", String(topProductCount)],
                   ["Active filters", String(activeFilterCount)],
@@ -598,8 +602,8 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                               <p className="mt-2 text-sm font-semibold text-moss">{narrationOutput.headline}</p>
                             ) : null}
                             <p className="mt-2 text-sm font-medium text-ink/58">
-                              {productView.recommendation.product.brand} · {categoryLabels[productView.recommendation.product.category]} · $
-                              {productView.recommendation.product.priceUsd}
+                              {productView.recommendation.product.brand} · {categoryLabels[productView.recommendation.product.category]} ·{" "}
+                              {formatUsd(productView.recommendation.product.priceUsd)}
                             </p>
                             {availabilityMessages.length > 0 ? (
                               <div className="mt-2 space-y-1 text-xs leading-5 text-ink/50">
@@ -618,10 +622,38 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                             value={productView.recommendation.product.solves.map(humanize).join(", ")}
                           />
                           <DetailBlock
+                            label="Final recommendation score"
+                            value={`${productView.recommendation.finalRecommendationScore}/100`}
+                          />
+                          <DetailBlock
+                            label="Fit score"
+                            value={`${productView.recommendation.fitScore}/100`}
+                          />
+                          <DetailBlock
+                            label="Trait delta score"
+                            value={`${productView.recommendation.traitDeltaScore}/100`}
+                          />
+                          <DetailBlock
                             label="Confidence"
                             value={
                               narrationOutput?.confidenceNote ??
-                              `${productView.recommendation.explanation.confidenceLevel} (${productView.recommendation.scoreBreakdown.confidence}/100)`
+                              `${productView.recommendation.confidenceLevel} (${productView.recommendation.scoreBreakdown.confidence}/100)`
+                            }
+                          />
+                          <DetailBlock
+                            label="Profile fields used"
+                            value={
+                              productView.recommendation.profileFieldsUsed.length
+                                ? productView.recommendation.profileFieldsUsed.join(", ")
+                                : "No private profile fields used."
+                            }
+                          />
+                          <DetailBlock
+                            label="Missing device specs"
+                            value={
+                              productView.recommendation.missingDeviceSpecs.length
+                                ? productView.recommendation.missingDeviceSpecs.join(", ")
+                                : "No fit-critical device specs missing."
                             }
                           />
                           <DetailBlock

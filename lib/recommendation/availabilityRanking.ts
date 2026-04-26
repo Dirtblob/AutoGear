@@ -59,10 +59,16 @@ export function rerankProductRecommendationsWithAvailability(
       const summary = getSummary(availabilityByProductId, recommendation.product.id);
       const bestPriceCents = listingPriceCents(summary);
       const adjustment = scoreAvailabilityAdjustment(recommendation, summary);
+      const score = clampScore(recommendation.score + adjustment);
 
       return {
         ...recommendation,
-        score: clampScore(recommendation.score + adjustment),
+        score,
+        finalRecommendationScore: score,
+        scoreBreakdown: {
+          ...recommendation.scoreBreakdown,
+          finalScore: score,
+        },
         currentBestPriceCents: bestPriceCents ?? recommendation.currentBestPriceCents,
         priceDeltaFromExpected:
           bestPriceCents === null

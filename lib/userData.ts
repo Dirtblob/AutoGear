@@ -1,16 +1,22 @@
+import type { SavedProduct, UserProfile as PrismaUserProfile } from "@prisma/client";
 import { getCachedAvailabilitySummaries, type AvailabilityProductModel, type AvailabilitySummary } from "@/lib/availability";
-import { productCatalog } from "@/data/productCatalog";
 import { db } from "@/lib/db";
+import { getCurrentMongoUser } from "@/lib/devUser";
+import { listInventoryItemsForUser, type MongoInventoryItem } from "@/lib/inventory/mongoInventory";
 import { parseProfileMetadata } from "@/lib/profileMetadata";
+import { loadMongoRecommendationProducts, recommendationProductToAvailabilityModel } from "@/lib/recommendation/mongoDeviceProducts";
 import {
   normalizeInventoryCategories,
   normalizeRoomConstraints,
   normalizeUserPreferences,
   normalizeUserProblems,
   type InventoryItem,
+  type PrivateRecommendationProfile,
+  type Product,
   type UserProblem,
   type UserProfile,
 } from "@/lib/recommendation/types";
+import { getCurrentUserPrivateProfileForRecommendations, type UserPrivateProfile } from "@/lib/userPrivateProfiles";
 
 interface LoadedRecommendationContext {
   profileId: string;
@@ -22,18 +28,14 @@ interface LoadedRecommendationContext {
   exactCurrentModelsProvided: boolean;
   ports: string[];
   deviceType: "desktop" | "laptop" | "tablet" | "unknown";
+  privateProfile: PrivateRecommendationProfile | null;
   availabilityByProductId: Map<string, AvailabilitySummary>;
+  candidateProducts: Product[];
 }
 
-type RecommendationContextProfileRecord = NonNullable<
-  Awaited<
-    ReturnType<
-      typeof db.userProfile.findFirst<{
-        include: { inventoryItems: true; savedProducts: true };
-      }>
-    >
-  >
->;
+type RecommendationContextProfileRecord = PrismaUserProfile & {
+  savedProducts: SavedProduct[];
+};
 
 const productIdAliasMap: Record<string, string> = {
   "desk_lamp-benq-screenbar": "lamp-benq-screenbar",
@@ -99,16 +101,10 @@ function mapInventoryCondition(value: string): InventoryItem["condition"] {
 }
 
 function mapInventoryItem(
-  item: {
-    id: string;
-    category: string;
-    brand: string | null;
-    model: string | null;
-    exactModel: string | null;
-    specsJson: string | null;
-    condition: string;
-    notes: string | null;
-  },
+  item: Pick<
+    MongoInventoryItem,
+    "_id" | "category" | "brand" | "model" | "exactModel" | "specs" | "specsJson" | "condition" | "notes"
+  >,
 ): InventoryItem {
   const category = normalizeInventoryCategories(item.category)[0] ?? "unknown";
   const name =
@@ -121,12 +117,28 @@ function mapInventoryItem(
   const notesText = `${item.exactModel ?? ""} ${item.model ?? ""} ${item.notes ?? ""}`.trim();
 
   return {
-    id: item.id,
+    id: String(item._id),
     name,
     category,
     condition: mapInventoryCondition(item.condition),
     painPoints: inferPainPoints(notesText),
-    specs: parseSpecs(item.specsJson),
+    specs: item.specs ?? parseSpecs(item.specsJson ?? null),
+  };
+}
+
+function mapPrivateProfile(profile: UserPrivateProfile | null): PrivateRecommendationProfile | null {
+  if (!profile) return null;
+
+  return {
+    profession: profile.profession,
+    primaryUseCases: profile.primaryUseCases,
+    heightCm: profile.heightCm,
+    handLengthMm: profile.handLengthMm,
+    palmWidthMm: profile.palmWidthMm,
+    dominantHand: profile.dominantHand,
+    gripStyle: profile.gripStyle,
+    comfortPriorities: profile.comfortPriorities,
+    sensitivity: profile.sensitivity,
   };
 }
 
@@ -150,7 +162,13 @@ async function loadRecommendationContextForProfile(
 
   const metadata = parseProfileMetadata(activeProfile.roomConstraints);
   const rawConstraints = metadata.rawConstraints;
-  const inventory = activeProfile.inventoryItems.map(mapInventoryItem);
+  const mongoUser = await getCurrentMongoUser();
+  const [inventoryRecords, privateProfileRecord] = await Promise.all([
+    listInventoryItemsForUser(mongoUser.id),
+    getCurrentUserPrivateProfileForRecommendations(),
+  ]);
+  const inventory = inventoryRecords.map(mapInventoryItem);
+  const privateProfile = mapPrivateProfile(privateProfileRecord);
   const profile: UserProfile = {
     id: activeProfile.id,
     name: activeProfile.name?.trim() || "User",
@@ -171,18 +189,10 @@ async function loadRecommendationContextForProfile(
   };
 
   const savedProductIds = new Set(activeProfile.savedProducts.map((item) => canonicalizeProductId(item.productModelId)));
-  const availabilityProductModels: AvailabilityProductModel[] = productCatalog.map((product) => ({
-    id: product.id,
-    brand: product.brand,
-    model: "model" in product && typeof product.model === "string" ? product.model : undefined,
-    displayName: product.name,
-    category: product.category,
-    estimatedPriceCents: product.priceUsd * 100,
-    gtin: "gtin" in product && typeof product.gtin === "string" ? product.gtin : undefined,
-    upc: "upc" in product && typeof product.upc === "string" ? product.upc : undefined,
-    searchQueries: "searchQueries" in product && Array.isArray(product.searchQueries) ? product.searchQueries : undefined,
-    allowUsed: activeProfile.usedItemsOkay,
-  }));
+  const candidateProducts = await loadMongoRecommendationProducts();
+  const availabilityProductModels: AvailabilityProductModel[] = candidateProducts.map((product) =>
+    recommendationProductToAvailabilityModel(product, { allowUsed: activeProfile.usedItemsOkay }),
+  );
   const seededAvailability = await getCachedAvailabilitySummaries(availabilityProductModels);
   const availabilityByProductId = new Map<string, AvailabilitySummary>(
     Object.entries(seededAvailability).map(([productId, summary]) => [canonicalizeProductId(productId), summary]),
@@ -201,10 +211,12 @@ async function loadRecommendationContextForProfile(
     savedProductIds,
     demoScenarioId: metadata.demoScenarioId,
     usedItemsOkay: activeProfile.usedItemsOkay,
-    exactCurrentModelsProvided: activeProfile.inventoryItems.some((item) => Boolean(item.exactModel?.trim())),
+    exactCurrentModelsProvided: inventoryRecords.some((item) => Boolean(item.exactModel?.trim())),
     ports: metadata.ports,
     deviceType: metadata.deviceType,
+    privateProfile,
     availabilityByProductId,
+    candidateProducts,
   };
 }
 
@@ -212,10 +224,10 @@ export async function loadRecommendationContext(): Promise<LoadedRecommendationC
   const activeProfile =
     (await db.userProfile.findUnique({
       where: { id: "demo-profile" },
-      include: { inventoryItems: true, savedProducts: true },
+      include: { savedProducts: true },
     })) ??
     (await db.userProfile.findFirst({
-      include: { inventoryItems: true, savedProducts: true },
+      include: { savedProducts: true },
       orderBy: { createdAt: "desc" },
     }));
 
@@ -224,7 +236,7 @@ export async function loadRecommendationContext(): Promise<LoadedRecommendationC
 
 export async function loadLatestRecommendationContext(): Promise<LoadedRecommendationContext | null> {
   const activeProfile = await db.userProfile.findFirst({
-    include: { inventoryItems: true, savedProducts: true },
+    include: { savedProducts: true },
     orderBy: { createdAt: "desc" },
   });
 

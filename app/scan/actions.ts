@@ -2,9 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
 import { getCurrentUserContext } from "@/lib/currentUser";
 import { DEVICE_CATEGORIES } from "@/lib/devices/deviceTypes";
+import { createManyDevInventoryItems } from "@/lib/inventory/mongoInventory";
 import { buildToastHref } from "@/lib/ui/toasts";
 
 const allowedCategories = new Set([...DEVICE_CATEGORIES, "storage", "cable_management", "other", "unknown"]);
@@ -54,12 +54,13 @@ export async function saveScanInventoryAction(formData: FormData): Promise<void>
   const approvedItems = getPayload(formData)
     .filter((item) => item && item.approved)
     .map((item) => ({
-      userProfileId: context.profileRecord.id,
       category: normalizeCategory(item.category),
-      brand: item.brand.trim() || null,
-      model: item.model.trim() || null,
+      brand: item.brand.trim() || "Unknown",
+      model: item.model.trim() || item.category.trim() || "Detected item",
       exactModel: null,
-      condition: "UNKNOWN",
+      catalogProductId: null,
+      specsJson: null,
+      condition: "UNKNOWN" as const,
       ageYears: null,
       notes: buildScanNote(item),
       source: "PHOTO" as const,
@@ -70,9 +71,7 @@ export async function saveScanInventoryAction(formData: FormData): Promise<void>
     redirect(buildToastHref("/scan", "scan_inventory_saved", "info"));
   }
 
-  await db.inventoryItem.createMany({
-    data: approvedItems,
-  });
+  await createManyDevInventoryItems(approvedItems);
 
   revalidatePath("/scan");
   revalidatePath("/inventory");

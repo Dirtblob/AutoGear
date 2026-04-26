@@ -2,6 +2,7 @@ import type { ScoreBreakdown } from "@/lib/recommendation/types";
 
 const breakdownLabels: Array<{ key: keyof ScoreBreakdown; label: string }> = [
   { key: "problemFit", label: "Problem fit" },
+  { key: "ergonomicFit", label: "Fit score" },
   { key: "traitDeltaFit", label: "Trait delta" },
   { key: "constraintFit", label: "Constraint fit" },
   { key: "valueFit", label: "Value fit" },

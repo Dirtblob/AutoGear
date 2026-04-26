@@ -1,7 +1,8 @@
-import type { InventoryItem as PrismaInventoryItem, UserProfile as PrismaUserProfile } from "@prisma/client";
+import type { UserProfile as PrismaUserProfile } from "@prisma/client";
 import { productCatalogToAvailabilityModels } from "@/lib/availability/catalogModels";
 import { getCachedAvailabilitySummaries } from "@/lib/availability";
 import { db } from "@/lib/db";
+import { listDevInventoryItems, type MongoInventoryItem } from "@/lib/inventory/mongoInventory";
 import { getCategoryRecommendations } from "@/lib/recommendation/categoryEngine";
 import { rankProductsForInput } from "@/lib/recommendation/productEngine";
 import {
@@ -18,11 +19,11 @@ export interface RerankRecommendationsResult {
   recommendationCount: number;
 }
 
-function mapInventoryItem(item: PrismaInventoryItem): InventoryItem {
+function mapInventoryItem(item: MongoInventoryItem): InventoryItem {
   const category = normalizeInventoryCategories(item.category)[0] ?? "unknown";
 
   return {
-    id: item.id,
+    id: String(item._id),
     name: item.exactModel ?? ([item.brand, item.model].filter(Boolean).join(" ") || category),
     category,
     condition: item.condition.toLowerCase() as InventoryItem["condition"],
@@ -54,13 +55,14 @@ function mapProfile(record: PrismaUserProfile): UserProfile {
 }
 
 export async function rerankRecommendations(): Promise<RerankRecommendationsResult> {
-  const profiles = await db.userProfile.findMany({ include: { inventoryItems: true } });
+  const profiles = await db.userProfile.findMany();
   const cachedAvailabilityByProductId = await getCachedAvailabilitySummaries(productCatalogToAvailabilityModels());
+  const inventoryRecords = await listDevInventoryItems();
+  const inventory = inventoryRecords.map(mapInventoryItem);
   let recommendationCount = 0;
 
   for (const profileRecord of profiles) {
     const profile = mapProfile(profileRecord);
-    const inventory = profileRecord.inventoryItems.map(mapInventoryItem);
     const input = {
       profile,
       inventory,

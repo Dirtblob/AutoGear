@@ -1,4 +1,4 @@
-import { productCatalog } from "../../data/productCatalog";
+import { productCatalog } from "../../data/seeds/productCatalog";
 import { getCategoryRecommendations } from "./categoryEngine";
 import { getProductRecommendations } from "./productEngine";
 import { categoryLabels } from "./scoring";

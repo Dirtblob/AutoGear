@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { productCatalog } from "../../data/productCatalog";
+import { productCatalog } from "../../data/seeds/productCatalog";
 import type { AvailabilitySummary } from "../availability";
 import { matchesFilters, type RecommendationFilters } from "./dashboard";
 import { buildHackathonDemoPriorityList } from "./demoMode";

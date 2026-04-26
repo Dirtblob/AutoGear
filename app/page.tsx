@@ -4,10 +4,10 @@ import { ProductCard } from "@/components/ProductCard";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { productCatalog } from "@/data/productCatalog";
 import { getCachedAvailabilitySummaries } from "@/lib/availability";
 import { buildRecommendationNarrationId } from "@/lib/llm/explanationCache";
 import { readCachedRecommendationNarrations } from "@/lib/llm/recommendationNarrator";
+import { loadMongoRecommendationProducts, recommendationProductToAvailabilityModel } from "@/lib/recommendation/mongoDeviceProducts";
 import {
   buildHackathonDemoPriorityList,
   buildHackathonDemoRecommendationInput,
@@ -16,12 +16,18 @@ import {
 import { getCategoryRecommendations } from "@/lib/recommendation/categoryEngine";
 import { categoryLabels } from "@/lib/recommendation/scoring";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
-  const previewProducts = productCatalog.slice(0, 3);
-  const cachedAvailabilityByProductId = await getCachedAvailabilitySummaries(productCatalog);
+  const candidateProducts = await loadMongoRecommendationProducts();
+  const previewProducts = candidateProducts.slice(0, 3);
+  const cachedAvailabilityByProductId = await getCachedAvailabilitySummaries(
+    candidateProducts.map((product) => recommendationProductToAvailabilityModel(product, { allowUsed: true })),
+  );
   const availabilityByProductId = cachedAvailabilityByProductId;
   const demoInput = {
     ...buildHackathonDemoRecommendationInput(),
+    candidateProducts,
     availabilityByProductId,
   };
   const demoPriorityList = buildHackathonDemoPriorityList(demoInput);

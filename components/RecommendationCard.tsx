@@ -4,6 +4,7 @@ import { availabilityDetailMessages, getAvailabilityStatusBadge } from "@/lib/av
 import type { LLMRecommendationOutput, RecommendationNarrationSource } from "@/lib/llm/types";
 import { categoryLabels } from "@/lib/recommendation/scoring";
 import type { ProductRecommendation } from "@/lib/recommendation/types";
+import { formatUsd, formatUsdFromCents } from "@/lib/ui/format";
 import { DeviceDeltaComparison } from "./DeviceDeltaComparison";
 import { ScoreBadge } from "./ScoreBadge";
 
@@ -24,7 +25,7 @@ export function RecommendationCard({ recommendation, availability, narration, na
   const availabilityMessages = availabilityDetailMessages(availability);
   const priceStatusBadge = getAvailabilityStatusBadge(availability);
   const displayedPrice =
-    recommendation.currentBestPriceCents === null ? `$${product.priceUsd}` : `$${Math.round(recommendation.currentBestPriceCents / 100)}`;
+    recommendation.currentBestPriceCents === null ? formatUsd(product.priceUsd) : formatUsdFromCents(recommendation.currentBestPriceCents);
   const betterThanCurrentRow = recommendation.deviceDelta?.explanationFacts[0]
     ? (["Why this is better", recommendation.deviceDelta.explanationFacts[0]] satisfies [string, string])
     : null;
@@ -41,6 +42,9 @@ export function RecommendationCard({ recommendation, availability, narration, na
         ...(betterThanCurrentRow ? [betterThanCurrentRow] : []),
         ["Why now", recommendation.explanation.whyNow],
         ["Why this model", recommendation.explanation.whyThisModel],
+        ["Profile fields used", recommendation.profileFieldsUsed.length ? recommendation.profileFieldsUsed.join(", ") : "No private profile fields used."],
+        ["Missing device specs", recommendation.missingDeviceSpecs.length ? recommendation.missingDeviceSpecs.join(", ") : "No fit-critical device specs missing."],
+        ["Confidence", `${recommendation.confidenceLevel} (${recommendation.scoreBreakdown.confidence}/100)`],
         ["Ranking changed because", recommendation.rankingChangedReason],
       ];
 
@@ -72,6 +76,19 @@ export function RecommendationCard({ recommendation, availability, narration, na
           ) : null}
         </div>
         <ScoreBadge score={recommendation.score} size="md" />
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        {[
+          ["Final", recommendation.finalRecommendationScore],
+          ["Fit", recommendation.fitScore],
+          ["Trait delta", recommendation.traitDeltaScore],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-2xl border border-ink/8 bg-mist/70 p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">{label}</p>
+            <p className="mt-1 font-display text-2xl font-semibold text-ink">{value}/100</p>
+          </div>
+        ))}
       </div>
 
       <div className="mt-5 rounded-[1.4rem] bg-[linear-gradient(135deg,rgba(23,33,31,1),rgba(66,104,90,0.94))] p-4 text-white">

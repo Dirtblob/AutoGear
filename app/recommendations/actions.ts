@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { productCatalog } from "@/data/productCatalog";
 import { db } from "@/lib/db";
 import { buildRecommendationNarrationId } from "@/lib/llm/explanationCache";
 import { narrateRecommendation } from "@/lib/llm/recommendationNarrator";
@@ -63,13 +62,15 @@ export async function refreshRecommendationExplanation(formData: FormData): Prom
   const recommendationInput = {
     profile: context.profile,
     inventory: context.inventory,
+    candidateProducts: context.candidateProducts,
+    privateProfile: context.privateProfile,
     exactCurrentModelsProvided: context.exactCurrentModelsProvided,
     ports: context.ports,
     deviceType: context.deviceType,
     usedItemsOkay: context.usedItemsOkay,
     availabilityByProductId: context.availabilityByProductId,
   };
-  const product = productCatalog.find((candidate) => candidate.id === productId);
+  const product = context.candidateProducts.find((candidate) => candidate.id === productId);
   const categoryRecommendation = getCategoryRecommendations(recommendationInput).find(
     (candidate) => candidate.category === product?.category,
   );
@@ -81,7 +82,7 @@ export async function refreshRecommendationExplanation(formData: FormData): Prom
   const productRecommendation = getProductRecommendations(
     recommendationInput,
     categoryRecommendation,
-    productCatalog,
+    context.candidateProducts,
   ).find((candidate) => candidate.product.id === productId);
 
   if (!productRecommendation) {

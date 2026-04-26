@@ -37,7 +37,7 @@ export function ActionButton({
         fullWidth ? "w-full" : ""
       } ${variantClasses[variant]} ${className}`}
     >
-      <span className={`mr-2 size-2 rounded-full bg-current ${pending ? "animate-pulse opacity-70" : "opacity-0"}`} />
+      <span className={`rounded-full bg-current ${pending ? "mr-2 size-2 animate-pulse opacity-70" : "size-0 opacity-0"}`} />
       {pending ? pendingText : children}
     </button>
   );

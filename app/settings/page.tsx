@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { MongoMigrationPanel } from "@/components/MongoMigrationPanel";
 import { db } from "@/lib/db";
+import { countDevInventoryItems } from "@/lib/inventory/mongoInventory";
 import { hackathonDemoProfile } from "@/lib/recommendation/demoMode";
 import { deleteLocalInventoryAction, deleteLocalProfileAction } from "./actions";
 
@@ -8,14 +10,26 @@ export const dynamic = "force-dynamic";
 
 const controlCards = [
   {
-    title: "Edit profile",
-    body: "Review budget, needs, constraints, and preferences.",
+    title: "Private profile",
+    body: "Edit fit measurements, comfort preferences, and recommendation privacy.",
+    action: (
+      <Link
+        href="/profile"
+        className="mt-4 inline-flex rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-moss"
+      >
+        Edit private profile
+      </Link>
+    ),
+  },
+  {
+    title: "Onboarding profile",
+    body: "Review demo budget, needs, constraints, and setup preferences.",
     action: (
       <Link
         href="/onboarding"
-        className="mt-4 inline-flex rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-moss"
+        className="mt-4 inline-flex rounded-full border border-ink/10 px-4 py-2 text-sm font-semibold text-ink transition hover:border-moss/30 hover:text-moss"
       >
-        Edit profile
+        Open onboarding
       </Link>
     ),
   },
@@ -49,13 +63,13 @@ export default async function SettingsPage() {
     include: {
       _count: {
         select: {
-          inventoryItems: true,
           recommendations: true,
           savedProducts: true,
         },
       },
     },
   });
+  const inventoryCount = await countDevInventoryItems();
 
   return (
     <div className="space-y-6">
@@ -68,7 +82,7 @@ export default async function SettingsPage() {
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           {[
-            ["Inventory items", profile?._count.inventoryItems ?? 0],
+            ["Inventory items", inventoryCount],
             ["Generated recs", profile?._count.recommendations ?? 0],
             ["Saved products", profile?._count.savedProducts ?? 0],
           ].map(([label, value]) => (
@@ -79,7 +93,7 @@ export default async function SettingsPage() {
           ))}
         </div>
       </section>
-      <section className="grid gap-5 md:grid-cols-3">
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {controlCards.map(({ title, body, action }) => (
           <div key={title} className="rounded-2xl bg-white p-6 shadow-soft">
             <h2 className="text-xl font-semibold">{title}</h2>
@@ -88,6 +102,7 @@ export default async function SettingsPage() {
           </div>
         ))}
       </section>
+      <MongoMigrationPanel />
     </div>
   );
 }

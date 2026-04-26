@@ -1,4 +1,4 @@
-import { productCatalog, type ProductCatalogItem } from "@/data/productCatalog";
+import { productCatalog, type ProductCatalogItem } from "@/data/seeds/productCatalog";
 import type { AvailabilityProductModel } from "./types";
 
 export function catalogProductToAvailabilityModel(product: ProductCatalogItem): AvailabilityProductModel {

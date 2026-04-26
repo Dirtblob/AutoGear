@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
-import { productCatalog } from "@/data/productCatalog";
+import { productCatalog } from "@/data/seeds/productCatalog";
 import { buildAdminDashboardData } from "@/lib/admin/dashboard";
 import {
   clearAdminDemoDataAction,

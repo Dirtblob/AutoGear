@@ -26,6 +26,9 @@ function recommendation(
         value: 7,
       },
     },
+    finalRecommendationScore: score,
+    fitScore: score,
+    traitDeltaScore: score,
     score,
     fit: "strong",
     reasons: ["Good fit"],
@@ -46,6 +49,7 @@ function recommendation(
     rankingChangedReason: "Baseline ranking",
     scoreBreakdown: {
       problemFit: score,
+      ergonomicFit: score,
       traitDeltaFit: score,
       constraintFit: score,
       valueFit: score,
@@ -54,6 +58,9 @@ function recommendation(
       confidence: score,
       finalScore: score,
     },
+    profileFieldsUsed: [],
+    missingDeviceSpecs: [],
+    confidenceLevel: "medium",
   };
 }
 

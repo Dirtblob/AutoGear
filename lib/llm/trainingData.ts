@@ -43,6 +43,9 @@ export interface RecommendationTrainingInputPayload {
     recommendation: Pick<
       ProductRecommendation,
       | "score"
+      | "finalRecommendationScore"
+      | "fitScore"
+      | "traitDeltaScore"
       | "scoreBreakdown"
       | "fit"
       | "reasons"
@@ -209,6 +212,9 @@ function buildTrainingInputPayload({
       recommendation: {
         product: recommendation.product,
         score: recommendation.score,
+        finalRecommendationScore: recommendation.finalRecommendationScore,
+        fitScore: recommendation.fitScore,
+        traitDeltaScore: recommendation.traitDeltaScore,
         scoreBreakdown: recommendation.scoreBreakdown,
         fit: recommendation.fit,
         reasons: recommendation.reasons,

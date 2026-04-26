@@ -3,6 +3,7 @@ import type { AvailabilitySummary } from "@/lib/availability";
 import { availabilityDetailMessages, getAvailabilityStatusBadge } from "@/lib/availability/display";
 import { categoryLabels } from "@/lib/recommendation/scoring";
 import type { Product } from "@/lib/recommendation/types";
+import { formatUsd } from "@/lib/ui/format";
 
 interface ProductCardProps {
   product: Product;
@@ -22,7 +23,7 @@ export function ProductCard({ product, availability }: ProductCardProps) {
         </p>
         <h3 className="mt-3 font-display text-xl font-semibold">{product.name}</h3>
         <p className="mt-1 text-sm text-white/68">
-          {product.brand} · ${product.priceUsd}
+          {product.brand} · {formatUsd(product.priceUsd)}
         </p>
       </div>
       <div className="flex-1">

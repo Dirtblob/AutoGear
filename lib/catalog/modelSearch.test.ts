@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { catalogProducts } from "../../data/productCatalog";
+import { catalogProducts } from "../../data/seeds/productCatalog";
 import { searchCatalogProducts } from "./modelSearch";
 
 describe("searchCatalogProducts", () => {

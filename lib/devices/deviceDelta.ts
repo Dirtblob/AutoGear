@@ -68,6 +68,36 @@ function nestedTraitRatings(specs: Record<string, unknown> | undefined): DeviceT
 }
 
 function catalogDeviceFromProduct(product: Product): CatalogDevice {
+  const productRecord = product as Product & { features?: Record<string, unknown>; estimatedPriceCents?: number };
+
+  if (product.traitRatings) {
+    const rawDevice: RawCatalogDevice = {
+      id: product.catalogDeviceId ?? `candidate-${product.id}`,
+      category: deviceCategory(product.category),
+      brand: product.brand,
+      model: product.name,
+      displayName: product.name,
+      estimatedPriceCents: productRecord.estimatedPriceCents ?? Math.round(product.priceUsd * 100),
+      specs: {
+        ...(product.normalizedSpecs ?? {}),
+        ...(productRecord.features ?? {}),
+        brand: product.brand,
+        model: product.name,
+        category: product.category,
+        quiet: product.constraints.quiet,
+        portable: product.constraints.portable,
+        widthInches: product.constraints.minDeskWidthInches,
+      },
+      ergonomicSpecs: product.ergonomicSpecs,
+      normalizedSpecs: product.normalizedSpecs,
+      traitRatings: product.traitRatings,
+      traitConfidence: product.traitConfidence ?? 0.78,
+      aliases: [product.name, product.id],
+    };
+
+    return enrichCatalogDevice(rawDevice);
+  }
+
   const existing = findBestDeviceMatch({
     category: product.category,
     brand: product.brand,
@@ -78,7 +108,6 @@ function catalogDeviceFromProduct(product: Product): CatalogDevice {
 
   if (existing && existing.category === deviceCategory(product.category)) return existing;
 
-  const productRecord = product as Product & { features?: Record<string, unknown>; estimatedPriceCents?: number };
   const specs = {
     ...(productRecord.features ?? {}),
     brand: product.brand,

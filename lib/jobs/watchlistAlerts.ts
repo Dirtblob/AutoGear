@@ -1,7 +1,8 @@
-import type { InventoryItem as PrismaInventoryItem, UserProfile as PrismaUserProfile } from "@prisma/client";
-import { productCatalog } from "@/data/productCatalog";
+import type { UserProfile as PrismaUserProfile } from "@prisma/client";
+import { productCatalog } from "@/data/seeds/productCatalog";
 import type { AvailabilitySummary } from "@/lib/availability";
 import { db } from "@/lib/db";
+import { listDevInventoryItems, type MongoInventoryItem } from "@/lib/inventory/mongoInventory";
 import { rerankProductRecommendationsWithAvailability } from "@/lib/recommendation/availabilityRanking";
 import { getCategoryRecommendations } from "@/lib/recommendation/categoryEngine";
 import { getProductRecommendations } from "@/lib/recommendation/productEngine";
@@ -23,11 +24,11 @@ interface CreateWatchlistAlertsOptions {
   currentSummaries: Record<string, AvailabilitySummary>;
 }
 
-function mapInventoryItem(item: PrismaInventoryItem): InventoryItem {
+function mapInventoryItem(item: MongoInventoryItem): InventoryItem {
   const category = normalizeInventoryCategories(item.category)[0] ?? "unknown";
 
   return {
-    id: item.id,
+    id: String(item._id),
     name: item.exactModel ?? ([item.brand, item.model].filter(Boolean).join(" ") || category),
     category,
     condition: item.condition.toLowerCase() as InventoryItem["condition"],
@@ -99,7 +100,7 @@ function findRecommendationRank(
 
 function buildRecommendationInput(
   profileRecord: PrismaUserProfile,
-  inventoryRecords: PrismaInventoryItem[],
+  inventoryRecords: MongoInventoryItem[],
 ): RecommendationInput {
   const profile = mapProfile(profileRecord);
   const inventory = inventoryRecords.map(mapInventoryItem);
@@ -118,10 +119,10 @@ export async function createWatchlistAlerts({
 }: CreateWatchlistAlertsOptions): Promise<number> {
   const profiles = await db.userProfile.findMany({
     include: {
-      inventoryItems: true,
       savedProducts: true,
     },
   });
+  const inventoryRecords = await listDevInventoryItems();
   const alertRows: Array<{
     userProfileId: string;
     savedProductId: string;
@@ -141,7 +142,7 @@ export async function createWatchlistAlerts({
       continue;
     }
 
-    const recommendationInput = buildRecommendationInput(profileRecord, profileRecord.inventoryItems);
+    const recommendationInput = buildRecommendationInput(profileRecord, inventoryRecords);
     const categoryRecommendations = getCategoryRecommendations(recommendationInput);
     const watchedCategories = new Set<ProductCategory>();
 

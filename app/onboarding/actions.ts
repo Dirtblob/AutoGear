@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { replaceDevInventoryItems } from "@/lib/inventory/mongoInventory";
 import {
   buildRoomConstraints,
   demoOnboardingValues,
@@ -62,25 +63,27 @@ async function createProfile(
         await tx.savedProduct.deleteMany({
           where: { userProfileId: createdProfile.id },
         });
-        await tx.inventoryItem.deleteMany({
-          where: { userProfileId: createdProfile.id },
-        });
-        await tx.inventoryItem.create({
-          data: {
-            userProfileId: createdProfile.id,
-            category: "laptop",
-            brand: "Campus setup",
-            model: "13-inch laptop",
-            exactModel: "Laptop-only student setup",
-            condition: "GOOD",
-            notes: "Laptop-only setup for classes, coding labs, and study sessions.",
-            source: "DEMO",
-          },
-        });
       }
 
       return createdProfile;
     });
+
+    if (options?.demo) {
+      await replaceDevInventoryItems([
+        {
+          category: "laptop",
+          brand: "Campus setup",
+          model: "13-inch laptop",
+          exactModel: "Laptop-only student setup",
+          catalogProductId: null,
+          specsJson: null,
+          condition: "GOOD",
+          ageYears: null,
+          notes: "Laptop-only setup for classes, coding labs, and study sessions.",
+          source: "DEMO",
+        },
+      ]);
+    }
 
     revalidatePath("/onboarding");
     revalidatePath("/inventory");

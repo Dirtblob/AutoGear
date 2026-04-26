@@ -1,4 +1,4 @@
-import { productCatalog } from "@/data/productCatalog";
+import { productCatalog } from "@/data/seeds/productCatalog";
 import {
   getAvailabilitySummaries,
   getCachedAvailabilitySummaries,

@@ -7,6 +7,7 @@ import {
   type NormalizedDeviceSpecs,
   type RawCatalogDevice,
 } from "./deviceTypes";
+import { buildErgonomicSpecs } from "./ergonomicSpecs";
 import { clampTrait, getDeviceStrengths, getDeviceWeaknesses, normalizeTraitRatings } from "./deviceTraits";
 
 const CURRENT_YEAR = 2026;
@@ -615,6 +616,7 @@ export function enrichCatalogDevice(rawDevice: RawCatalogDevice): CatalogDevice 
     ...rawDevice,
     aliases,
     lifecycleStatus: rawDevice.lifecycleStatus ?? "unknown",
+    ergonomicSpecs: rawDevice.ergonomicSpecs ?? buildErgonomicSpecs(rawDevice),
     normalizedSpecs: computed.normalizedSpecs,
     traitRatings: computed.traitRatings,
     traitConfidence: computed.traitConfidence,

@@ -51,6 +51,7 @@ function inventoryItem(overrides: Partial<InventoryItem> = {}): InventoryItem {
 function scoreBreakdown(overrides: Partial<ScoreBreakdown> = {}): ScoreBreakdown {
   return {
     problemFit: 92,
+    ergonomicFit: 86,
     traitDeltaFit: 88,
     constraintFit: 85,
     valueFit: 81,
@@ -118,6 +119,9 @@ function recommendation(overrides: Partial<ProductRecommendation> = {}): Product
 
   return {
     product: product(),
+    finalRecommendationScore: breakdown.finalScore,
+    fitScore: breakdown.ergonomicFit,
+    traitDeltaScore: breakdown.traitDeltaFit,
     score: breakdown.finalScore,
     breakdown,
     scoreBreakdown: breakdown,
@@ -139,6 +143,9 @@ function recommendation(overrides: Partial<ProductRecommendation> = {}): Product
     priceDeltaFromExpected: -1901,
     lastCheckedAt: new Date("2026-04-25T12:00:00Z"),
     availabilityStatus: "available",
+    profileFieldsUsed: ["user_private_profiles.comfortPriorities.largeDisplay"],
+    missingDeviceSpecs: [],
+    confidenceLevel: "medium",
     rankingChangedReason: "Fresh pricing improved the value fit without changing the underlying score weights.",
     ...overrides,
   };

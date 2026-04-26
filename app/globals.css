@@ -42,7 +42,7 @@ h4,
 h5,
 h6 {
   font-family: var(--font-display), sans-serif;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 ::selection {

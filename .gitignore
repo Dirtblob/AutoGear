@@ -10,3 +10,6 @@ prisma/dev.db
 training/data/*.jsonl
 training/outputs/*
 training/checkpoints/*
+
+# clerk configuration (can include secrets)
+/.clerk/

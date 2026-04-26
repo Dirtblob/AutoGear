@@ -1,4 +1,4 @@
-import { catalogProducts } from "../../../data/productCatalog";
+import { catalogProducts } from "../../../data/seeds/productCatalog";
 import type { ProductCategory } from "../../recommendation/types";
 import { normalizeCatalogConfidence, normalizeCatalogText } from "../ingestionPipeline";
 import { searchCatalogProducts } from "../modelSearch";

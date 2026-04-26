@@ -78,6 +78,7 @@ const recommendation: ProductRecommendation = {
   score: 91,
   breakdown: {
     problemFit: 92,
+    ergonomicFit: 86,
     traitDeltaFit: 88,
     constraintFit: 88,
     valueFit: 84,
@@ -88,6 +89,7 @@ const recommendation: ProductRecommendation = {
   },
   scoreBreakdown: {
     problemFit: 92,
+    ergonomicFit: 86,
     traitDeltaFit: 88,
     constraintFit: 88,
     valueFit: 84,
@@ -96,6 +98,9 @@ const recommendation: ProductRecommendation = {
     confidence: 75,
     finalScore: 91,
   },
+  finalRecommendationScore: 91,
+  fitScore: 86,
+  traitDeltaScore: 88,
   fit: "excellent",
   reasons: ["Directly addresses eye strain", "Fits the desk width comfortably"],
   explanation: {
@@ -113,6 +118,9 @@ const recommendation: ProductRecommendation = {
   priceDeltaFromExpected: null,
   lastCheckedAt: null,
   availabilityStatus: "unknown",
+  profileFieldsUsed: ["user_private_profiles.comfortPriorities.largeDisplay"],
+  missingDeviceSpecs: [],
+  confidenceLevel: "medium",
   rankingChangedReason: "No live availability data yet.",
 };
 

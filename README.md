@@ -165,12 +165,15 @@ Required:
 
 ```bash
 DATABASE_URL="file:./dev.db"
+MONGODB_URI="mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/lifeupgrade"
+MONGODB_DB_NAME="lifeupgrade"
 ```
 
 Optional:
 
 ```bash
 AVAILABILITY_PROVIDER="mock"
+DEV_USER_ID="dev-user"
 CRON_SECRET="replace-me"
 PRICES_API_BASE_URL="https://api.pricesapi.io"
 PRICES_API_KEY="replace-me"
@@ -180,9 +183,59 @@ GEMINI_MODEL="gemma-4-26b-a4b-it"
 GEMINI_DAILY_SOFT_CAP="200"
 ```
 
+Inventory is currently backed by MongoDB collections named `users` and `inventory_items`. Until real auth is added,
+server code uses the temporary `DEV_USER_ID` value for every inventory item and creates that dev user automatically.
+For local-only testing, `MONGODB_URI="mongodb://localhost:27017/lifeupgrade"` also works. For Atlas, use the Atlas
+connection string and make sure the local IP is allowed in Network Access.
+
 `AVAILABILITY_PROVIDER` defaults to `mock`. Use `pricesapi` only when `PRICES_API_KEY` is configured. `PRICES_API_BASE_URL` defaults to `https://api.pricesapi.io`, and the old `PRICE_API_*` env vars still work as temporary fallbacks. If the PricesAPI provider is selected without credentials, LifeUpgrade falls back to mock availability.
 
 `GEMINI_API_KEY` enables hosted Gemma 4 narration through the Gemini API. `GEMINI_MODEL` defaults to `gemma-4-26b-a4b-it`, and `GEMINI_DAILY_SOFT_CAP` defaults to `200`. The admin dashboard includes a `Test Gemma explanation` button that generates or refreshes a cached demo recommendation explanation and reports whether Gemini or deterministic fallback handled it.
+
+## MongoDB Migration Setup
+
+Required env vars:
+
+```bash
+DATABASE_URL="file:./dev.db"
+MONGODB_URI="mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/lifeupgrade"
+MONGODB_DB_NAME="lifeupgrade"
+DEV_USER_ID="dev-user"
+```
+
+Set up MongoDB indexes:
+
+```bash
+npm run db:setup-indexes
+```
+
+Seed or update the MongoDB device catalog:
+
+```bash
+npm run db:seed-devices
+```
+
+Migrate SQLite, hardcoded demo, and detected JSON inventory/profile data into MongoDB:
+
+```bash
+npm run db:migrate-inventory
+```
+
+Start the app:
+
+```bash
+npm run dev
+```
+
+Run the manual MongoDB migration verifier from a second terminal while the app is running:
+
+```bash
+APP_BASE_URL="http://localhost:3000" npm run verify:mongodb-migration
+```
+
+The verifier checks Atlas connectivity, index creation, device seed insert/update behavior, inventory migration
+insert/update behavior, `/api/devices`, current-user inventory scoping, inventory POST/PATCH/DELETE, and a
+MongoDB-backed recommendation ranking.
 
 ## How To Run Locally
 

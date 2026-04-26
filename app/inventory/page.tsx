@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { InventoryForm } from "@/components/InventoryForm";
 import { InventoryItemCard } from "@/components/InventoryItemCard";
-import { ProductModelAutocomplete } from "@/components/ProductModelAutocomplete";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { getCurrentUserContext, type InventoryListItem } from "@/lib/currentUser";
+import { getCurrentUserContext } from "@/lib/currentUser";
 import { DEVICE_CATEGORIES } from "@/lib/devices/deviceTypes";
 import { categoryLabels } from "@/lib/recommendation/scoring";
+import { formatUsd } from "@/lib/ui/format";
 import {
   addInventoryItemAction,
   deleteInventoryItemAction,
@@ -28,125 +29,11 @@ const quickAddCategories = [
 
 const allCategoryOptions = [...DEVICE_CATEGORIES, "storage", "cable_management", "other", "unknown"] as const;
 
-const conditionOptions = [
-  ["UNKNOWN", "Unknown"],
-  ["POOR", "Poor"],
-  ["FAIR", "Fair"],
-  ["GOOD", "Good"],
-  ["EXCELLENT", "Excellent"],
-] as const;
-
 function normalizeCategoryParam(value: string | string[] | undefined): string {
   if (typeof value !== "string") return "laptop";
 
   const normalized = value.toLowerCase().replaceAll("-", "_");
   return allCategoryOptions.includes(normalized as (typeof allCategoryOptions)[number]) ? normalized : "laptop";
-}
-
-function inputClassName(): string {
-  return "w-full rounded-[1.2rem] border border-ink/10 bg-mist/75 px-4 py-3 outline-none ring-moss/20 transition focus:border-moss/30 focus:ring-4";
-}
-
-const categorySelectOptions = allCategoryOptions.map((category) => ({
-  value: category,
-  label:
-    category in categoryLabels
-      ? categoryLabels[category as keyof typeof categoryLabels]
-      : category.replaceAll("_", " ").replace(/^./, (value) => value.toUpperCase()),
-}));
-
-function InventoryForm({
-  action,
-  submitLabel,
-  submitTone,
-  selectedCategory,
-  item,
-}: {
-  action: (formData: FormData) => Promise<void>;
-  submitLabel: string;
-  submitTone: string;
-  selectedCategory: string;
-  item?: InventoryListItem;
-}) {
-  return (
-    <form action={action} className="space-y-4">
-      {item ? <input type="hidden" name="itemId" value={item.id} /> : null}
-
-      <ProductModelAutocomplete
-        categories={categorySelectOptions}
-        defaultCategory={item?.category ?? selectedCategory}
-        defaultBrand={item?.brand}
-        defaultModel={item?.model}
-        defaultExactModel={item?.exactModel}
-        defaultCatalogProductId={item?.catalogProductId}
-        defaultSpecsJson={item?.specsJson}
-      />
-
-      <p className="text-xs leading-5 text-ink/52">
-        Exact model and imported specs improve recommendation confidence and compatibility reasoning.
-      </p>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <label className="space-y-2">
-          <span className="text-sm font-medium text-ink/72">Condition</span>
-          <select
-            name="condition"
-            defaultValue={(item?.condition ?? "unknown").toUpperCase()}
-            className={inputClassName()}
-          >
-            {conditionOptions.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="space-y-2">
-          <span className="text-sm font-medium text-ink/72">Age in years</span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            name="ageYears"
-            defaultValue={item?.ageYears ?? ""}
-            className={inputClassName()}
-            placeholder="2"
-          />
-        </label>
-      </div>
-
-      <label className="space-y-2">
-        <span className="text-sm font-medium text-ink/72">Notes</span>
-        <textarea
-          name="notes"
-          defaultValue={item?.notes ?? ""}
-          rows={4}
-          className={inputClassName()}
-          placeholder="Add fit issues, performance limits, comfort problems, or anything specific about this item."
-        />
-      </label>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <ActionButton
-          variant="primary"
-          pendingText={item ? "Saving..." : "Adding..."}
-          className={submitTone}
-          type="submit"
-        >
-          {submitLabel}
-        </ActionButton>
-        {item ? (
-          <Link
-            href="/inventory"
-            className="rounded-full border border-ink/12 px-5 py-3 text-sm font-semibold text-ink/72 transition hover:bg-mist"
-          >
-            Cancel edit
-          </Link>
-        ) : null}
-      </div>
-    </form>
-  );
 }
 
 interface InventoryPageProps {
@@ -209,7 +96,7 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
             </div>
             <div className="rounded-[1.5rem] bg-mist p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">Budget context</p>
-              <p className="mt-2 font-display text-3xl font-semibold">${profile.budgetUsd}</p>
+              <p className="mt-2 font-display text-3xl font-semibold">{formatUsd(profile.budgetUsd)}</p>
             </div>
           </div>
 

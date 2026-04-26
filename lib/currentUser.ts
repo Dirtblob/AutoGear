@@ -1,14 +1,17 @@
-import type { InventoryItem as PrismaInventoryItem, UserProfile as PrismaUserProfile } from "@prisma/client";
+import type { UserProfile as PrismaUserProfile } from "@prisma/client";
 import { db } from "@/lib/db";
+import { getCurrentMongoUser } from "@/lib/devUser";
+import { listInventoryItemsForUser, serializeInventoryItem, type MongoInventoryItem } from "@/lib/inventory/mongoInventory";
 import { parseProfileMetadata } from "@/lib/profileMetadata";
 import { hackathonDemoProfile, serializeHackathonDemoProfile } from "@/lib/recommendation/demoMode";
-import type { InventoryCategory, RecommendationInput, RoomConstraint, UserProblem, UserProfile } from "@/lib/recommendation/types";
+import type { InventoryCategory, PrivateRecommendationProfile, RecommendationInput, RoomConstraint, UserProblem, UserProfile } from "@/lib/recommendation/types";
 import {
   normalizeInventoryCategories,
   normalizeRoomConstraints,
   normalizeUserPreferences,
   normalizeUserProblems,
 } from "@/lib/recommendation/types";
+import { getCurrentUserPrivateProfile, type UserPrivateProfile } from "@/lib/userPrivateProfiles";
 
 const CURRENT_USER_ID = hackathonDemoProfile.id;
 
@@ -54,10 +57,12 @@ export interface InventoryListItem {
 }
 
 export interface CurrentUserContext {
+  userId: string;
   profileRecord: PrismaUserProfile;
-  inventoryRecords: PrismaInventoryItem[];
+  inventoryRecords: MongoInventoryItem[];
   profile: UserProfile;
   inventory: InventoryListItem[];
+  allowRecommendationHistory: boolean;
   recommendationInput: RecommendationInput;
 }
 
@@ -71,7 +76,11 @@ function parseJson(value: string | null): unknown {
   }
 }
 
-function parseSpecs(value: string | null): Record<string, unknown> | undefined {
+function parseSpecs(value: string | null, fallback?: Record<string, unknown> | null): Record<string, unknown> | undefined {
+  if (fallback && typeof fallback === "object" && !Array.isArray(fallback)) {
+    return fallback;
+  }
+
   const parsed = parseJson(value);
   return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : undefined;
 }
@@ -115,7 +124,7 @@ function parseConstraintObject(value: string | null): UserProfile["constraints"]
   };
 }
 
-function buildDisplayName(item: Pick<PrismaInventoryItem, "brand" | "model" | "exactModel" | "category">): string {
+function buildDisplayName(item: Pick<MongoInventoryItem, "brand" | "model" | "exactModel" | "category">): string {
   const base = [item.brand, item.model].filter(Boolean).join(" ").trim();
   if (item.exactModel?.trim()) {
     return base ? `${base} (${item.exactModel.trim()})` : item.exactModel.trim();
@@ -125,7 +134,7 @@ function buildDisplayName(item: Pick<PrismaInventoryItem, "brand" | "model" | "e
   return item.category.replaceAll("_", " ");
 }
 
-function inferPainPoints(item: Pick<PrismaInventoryItem, "notes" | "model" | "exactModel" | "brand">): UserProblem[] {
+function inferPainPoints(item: Pick<MongoInventoryItem, "notes" | "model" | "exactModel" | "brand">): UserProblem[] {
   const text = [item.brand, item.model, item.exactModel, item.notes]
     .filter(Boolean)
     .join(" ")
@@ -136,24 +145,32 @@ function inferPainPoints(item: Pick<PrismaInventoryItem, "notes" | "model" | "ex
     .map(([problem]) => problem);
 }
 
-function mapInventoryItem(record: PrismaInventoryItem): InventoryListItem {
+function normalizeInventorySource(value: string): InventoryListItem["source"] {
+  const normalized = value.toLowerCase();
+  if (normalized === "photo") return "photo";
+  if (normalized === "demo") return "demo";
+  return "manual";
+}
+
+function mapInventoryItem(record: MongoInventoryItem): InventoryListItem {
+  const serialized = serializeInventoryItem(record);
   const category = normalizeInventoryCategories(record.category)[0] ?? "other";
   const displayName = buildDisplayName(record);
 
   return {
-    id: record.id,
+    id: serialized.id,
     name: displayName,
     category,
     brand: record.brand,
     model: record.model,
     exactModel: record.exactModel,
     catalogProductId: record.catalogProductId,
-    specsJson: record.specsJson,
-    specs: parseSpecs(record.specsJson),
+    specsJson: serialized.specsJson,
+    specs: parseSpecs(serialized.specsJson, serialized.specs),
     condition: record.condition.toLowerCase() as InventoryListItem["condition"],
     ageYears: record.ageYears ?? null,
     notes: record.notes,
-    source: record.source.toLowerCase() as InventoryListItem["source"],
+    source: normalizeInventorySource(record.source),
     displayName,
     painPoints: inferPainPoints(record),
   };
@@ -178,6 +195,22 @@ function mapUserProfile(record: PrismaUserProfile): UserProfile {
   };
 }
 
+function mapPrivateProfile(profile: UserPrivateProfile | null): PrivateRecommendationProfile | null {
+  if (!profile?.privacy.allowProfileForRecommendations) return null;
+
+  return {
+    profession: profile.profession,
+    primaryUseCases: profile.primaryUseCases,
+    heightCm: profile.heightCm,
+    handLengthMm: profile.handLengthMm,
+    palmWidthMm: profile.palmWidthMm,
+    dominantHand: profile.dominantHand,
+    gripStyle: profile.gripStyle,
+    comfortPriorities: profile.comfortPriorities,
+    sensitivity: profile.sensitivity,
+  };
+}
+
 export async function ensureCurrentUserProfile(): Promise<PrismaUserProfile> {
   return db.userProfile.upsert({
     where: { id: CURRENT_USER_ID },
@@ -193,10 +226,11 @@ export async function getCurrentUserContext(): Promise<CurrentUserContext | null
 
   if (!profileRecord) return null;
 
-  const inventoryRecords = await db.inventoryItem.findMany({
-    where: { userProfileId: profileRecord.id },
-    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-  });
+  const mongoUser = await getCurrentMongoUser();
+  const [inventoryRecords, privateProfileRecord] = await Promise.all([
+    listInventoryItemsForUser(mongoUser.id),
+    getCurrentUserPrivateProfile(),
+  ]);
 
   const profile = mapUserProfile(profileRecord);
   const metadata = parseProfileMetadata(profileRecord.roomConstraints);
@@ -210,10 +244,12 @@ export async function getCurrentUserContext(): Promise<CurrentUserContext | null
       : metadata.deviceType;
 
   return {
+    userId: mongoUser.id,
     profileRecord,
     inventoryRecords,
     profile,
     inventory,
+    allowRecommendationHistory: privateProfileRecord?.privacy.allowRecommendationHistory ?? true,
     recommendationInput: {
       profile,
       inventory,
@@ -221,6 +257,7 @@ export async function getCurrentUserContext(): Promise<CurrentUserContext | null
       deviceType,
       ports: metadata.ports,
       usedItemsOkay: profileRecord.usedItemsOkay,
+      privateProfile: mapPrivateProfile(privateProfileRecord),
     },
   };
 }

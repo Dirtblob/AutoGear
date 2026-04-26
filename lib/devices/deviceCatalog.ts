@@ -1,7 +1,7 @@
 import type { CatalogProduct } from "@/lib/catalog/catalogTypes";
-import { rawDeviceSeedData } from "./deviceSeedData";
+import { rawDeviceSeedData } from "@/data/seeds/deviceSeedData";
 import type { CatalogDevice, DeviceValidationIssue, RawCatalogDevice } from "./deviceTypes";
-import { summarizeDeviceSpecs } from "./deviceTraits";
+import { deviceToInventorySpecs } from "./deviceInventorySpecs";
 import { enrichCatalogDevice, precomputeTraitRatings } from "./traitPrecompute";
 
 function dedupeDevices(devices: CatalogDevice[]): CatalogDevice[] {
@@ -31,19 +31,6 @@ export function recomputeDeviceTraits(device: RawCatalogDevice | CatalogDevice):
       traitRatings: computed.traitRatings,
       traitConfidence: computed.traitConfidence,
     }),
-  };
-}
-
-export function deviceToInventorySpecs(device: CatalogDevice): Record<string, unknown> {
-  return {
-    ...device.specs,
-    catalogDeviceId: device.id,
-    normalizedSpecs: device.normalizedSpecs,
-    traitRatings: device.traitRatings,
-    traitConfidence: device.traitConfidence,
-    releaseYear: device.releaseYear,
-    lifecycleStatus: device.lifecycleStatus,
-    shortSpecs: summarizeDeviceSpecs(device),
   };
 }
 

@@ -35,6 +35,9 @@ export interface LLMProductRecommendationSummary {
   category: string;
   priceUsd: number;
   score: number;
+  finalRecommendationScore: number;
+  fitScore: number;
+  traitDeltaScore: number;
   fit: ProductRecommendation["fit"];
   strengths: string[];
   solves: string[];
@@ -47,6 +50,9 @@ export interface LLMProductRecommendationSummary {
   lastCheckedAtIso: string | null;
   availabilityStatus: ProductRecommendation["availabilityStatus"];
   rankingChangedReason: string;
+  profileFieldsUsed: string[];
+  missingDeviceSpecs: string[];
+  confidenceLevel: ProductRecommendation["confidenceLevel"];
 }
 
 export interface LLMAvailabilityInput {

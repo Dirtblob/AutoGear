@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ConfirmActionForm } from "@/components/admin/ConfirmActionForm";
-import { productCatalog } from "@/data/productCatalog";
+import { productCatalog } from "@/data/seeds/productCatalog";
 import {
   deleteAllTrainingExamplesAction,
   deleteLowQualityTrainingExamplesAction,
@@ -146,6 +146,7 @@ async function saveTrainingExampleAction(formData: FormData): Promise<void> {
   const recommendationInput = {
     profile: context.profile,
     inventory: context.inventory,
+    privateProfile: context.privateProfile,
     exactCurrentModelsProvided: context.exactCurrentModelsProvided,
     usedItemsOkay: context.usedItemsOkay,
     ports: context.ports,
@@ -249,6 +250,7 @@ async function generateTrainingExamplesFromLatestRecommendationsAction(): Promis
   const recommendationInput = {
     profile: context.profile,
     inventory: context.inventory,
+    privateProfile: context.privateProfile,
     exactCurrentModelsProvided: context.exactCurrentModelsProvided,
     usedItemsOkay: context.usedItemsOkay,
     ports: context.ports,
@@ -404,6 +406,7 @@ export default async function TrainingDataPage({ searchParams }: { searchParams:
     const recommendationInput = {
       profile: context.profile,
       inventory: context.inventory,
+      privateProfile: context.privateProfile,
       exactCurrentModelsProvided: context.exactCurrentModelsProvided,
       usedItemsOkay: context.usedItemsOkay,
       ports: context.ports,

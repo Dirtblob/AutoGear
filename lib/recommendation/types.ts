@@ -1,5 +1,5 @@
 import type { AvailabilitySummary } from "../availability/types";
-import type { DeviceDelta } from "../devices/deviceTypes";
+import type { DeviceDelta, DeviceErgonomicSpecs, DeviceTraitRatings, NormalizedDeviceSpecs } from "../devices/deviceTypes";
 import { DEVICE_CATEGORIES, type DeviceCategory } from "../devices/deviceTypes";
 
 export const USER_PROBLEMS = [
@@ -59,6 +59,7 @@ export type Problem = UserProblem;
 
 export interface ScoreBreakdown {
   problemFit: number;
+  ergonomicFit: number;
   traitDeltaFit: number;
   constraintFit: number;
   valueFit: number;
@@ -66,6 +67,30 @@ export interface ScoreBreakdown {
   availabilityFit: number;
   confidence: number;
   finalScore: number;
+}
+
+export interface PrivateRecommendationProfile {
+  profession?: string;
+  primaryUseCases: string[];
+  heightCm?: number;
+  handLengthMm?: number;
+  palmWidthMm?: number;
+  dominantHand?: "left" | "right" | "ambidextrous";
+  gripStyle?: "palm" | "claw" | "fingertip" | "unknown";
+  comfortPriorities: {
+    lowNoise: boolean;
+    lightweight: boolean;
+    ergonomic: boolean;
+    portability: boolean;
+    largeDisplay: boolean;
+    compactSize: boolean;
+  };
+  sensitivity: {
+    wristStrain: boolean;
+    fingerFatigue: boolean;
+    hearingSensitive: boolean;
+    eyeStrain: boolean;
+  };
 }
 
 export interface UserProfile {
@@ -111,6 +136,11 @@ export interface Product {
     portable?: boolean;
     quiet?: boolean;
   };
+  ergonomicSpecs?: DeviceErgonomicSpecs;
+  normalizedSpecs?: NormalizedDeviceSpecs;
+  traitRatings?: DeviceTraitRatings;
+  traitConfidence?: number;
+  catalogDeviceId?: string;
   scoreHints: {
     comfort: number;
     productivity: number;
@@ -123,6 +153,7 @@ export interface RecommendationInput {
   profile: UserProfile;
   inventory: InventoryItem[];
   candidateProducts?: Product[];
+  privateProfile?: PrivateRecommendationProfile | null;
   exactCurrentModelsProvided?: boolean;
   deviceType?: "desktop" | "laptop" | "tablet" | "unknown";
   ports?: string[];
@@ -163,6 +194,9 @@ export type RecommendationAvailabilityStatus = "available" | "unavailable" | "un
 
 export interface ProductRecommendation {
   product: Product;
+  finalRecommendationScore: number;
+  fitScore: number;
+  traitDeltaScore: number;
   score: number;
   breakdown?: ScoreBreakdown;
   scoreBreakdown: ScoreBreakdown;
@@ -174,6 +208,9 @@ export interface ProductRecommendation {
   whyNotCheaper: string;
   whyNotMoreExpensive: string;
   isAspirational?: boolean;
+  profileFieldsUsed: string[];
+  missingDeviceSpecs: string[];
+  confidenceLevel: RecommendationConfidence;
   currentBestPriceCents: number | null;
   priceDeltaFromExpected: number | null;
   lastCheckedAt: Date | null;

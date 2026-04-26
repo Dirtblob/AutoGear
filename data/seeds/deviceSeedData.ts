@@ -1,4 +1,4 @@
-import type { DeviceCategory, RawCatalogDevice } from "./deviceTypes";
+import type { DeviceCategory, RawCatalogDevice } from "@/lib/devices/deviceTypes";
 
 const verifiedAt = "2026-04-25";
 

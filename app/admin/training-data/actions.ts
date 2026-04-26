@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { productCatalog } from "@/data/productCatalog";
+import { productCatalog } from "@/data/seeds/productCatalog";
 import { db } from "@/lib/db";
 import {
   buildDeterministicRecommendationExplanation,

@@ -1,4 +1,4 @@
-import { productCatalog as defaultProductCatalog } from "../../data/productCatalog";
+import { productCatalog as defaultProductCatalog } from "../../data/seeds/productCatalog";
 import type { AvailabilitySummary } from "../availability";
 import { computeDeviceDelta, findCurrentDeviceForProduct } from "../devices/deviceDelta";
 import type { DeviceDelta } from "../devices/deviceTypes";
@@ -14,17 +14,19 @@ import type {
   UserProfile,
 } from "./types";
 import { explainProductRecommendation } from "./explanations";
+import { scoreErgonomicFit } from "./fitScoring";
 import { rankCategories } from "./scoring";
 import { scoreToFit } from "./scoring";
 
 const FINAL_WEIGHTS = {
-  problemFit: 0.25,
-  traitDeltaFit: 0.25,
-  constraintFit: 0.15,
-  valueFit: 0.15,
-  compatibilityFit: 0.1,
+  problemFit: 0.22,
+  traitDeltaFit: 0.2,
+  ergonomicFit: 0.18,
+  constraintFit: 0.13,
+  valueFit: 0.14,
+  compatibilityFit: 0.05,
   availabilityFit: 0.05,
-  confidence: 0.05,
+  confidence: 0.03,
 } as const;
 
 const RECENT_PRICE_WINDOW_MS = 1000 * 60 * 60 * 24;
@@ -124,9 +126,11 @@ export function rankProducts(profile: UserProfile, inventory: InventoryItem[]): 
 }
 
 export function rankProductsForInput(input: RecommendationInput): ProductRecommendation[] {
+  const productCatalog = input.candidateProducts ?? defaultProductCatalog;
+
   return rankCategories(input.profile, input.inventory)
     .flatMap((categoryRecommendation) =>
-      getProductRecommendations(input, categoryRecommendation, defaultProductCatalog),
+      getProductRecommendations(input, categoryRecommendation, productCatalog),
     )
     .sort((a, b) => b.score - a.score || productPriceUsd(a.product) - productPriceUsd(b.product));
 }
@@ -143,6 +147,11 @@ function buildRecommendation(
   const deviceDelta = computeDeviceDelta(findCurrentDeviceForProduct(product, input.inventory), product, input.profile);
   let problemFit = scoreProblemFit(product, input.profile, input.inventory, categoryRecommendation, deviceDelta);
   let traitDeltaFit = scoreTraitDeltaFit(deviceDelta);
+  const ergonomicFit = scoreErgonomicFit({
+    product,
+    profile: input.profile,
+    privateProfile: input.privateProfile,
+  });
   const constraintFit = scoreConstraintFit(product, input);
   const cheaperAccessoriesFirst =
     product.category === "laptop" &&
@@ -151,7 +160,9 @@ function buildRecommendation(
   let valueFit = scoreValueFit(product, input.profile, categoryRecommendation, problemFit, summary);
   let compatibilityFit = scoreCompatibilityFit(product, input);
   const availabilityFit = scoreAvailabilityFit(summary);
-  const confidence = clampScore(scoreConfidence(product, input) * 0.65 + deviceDelta.confidence * 0.35);
+  const confidence = clampScore(
+    scoreConfidence(product, input, ergonomicFit.missingDeviceSpecs) * 0.65 + deviceDelta.confidence * 0.35,
+  );
 
   if (product.category === "laptop" && input.profile.problems.includes("slow_computer")) {
     const weakCurrentLaptop = input.inventory.some(
@@ -177,6 +188,7 @@ function buildRecommendation(
   const finalScore = clampScore(
     problemFit * FINAL_WEIGHTS.problemFit +
       traitDeltaFit * FINAL_WEIGHTS.traitDeltaFit +
+      ergonomicFit.fitScore * FINAL_WEIGHTS.ergonomicFit +
       constraintFit * FINAL_WEIGHTS.constraintFit +
       valueFit * FINAL_WEIGHTS.valueFit +
       compatibilityFit * FINAL_WEIGHTS.compatibilityFit +
@@ -185,6 +197,7 @@ function buildRecommendation(
   );
   const scoreBreakdown: ScoreBreakdown = {
     problemFit,
+    ergonomicFit: ergonomicFit.fitScore,
     traitDeltaFit,
     constraintFit,
     valueFit,
@@ -196,17 +209,23 @@ function buildRecommendation(
 
   return {
     product,
+    finalRecommendationScore: finalScore,
+    fitScore: ergonomicFit.fitScore,
+    traitDeltaScore: traitDeltaFit,
     score: finalScore,
     breakdown: scoreBreakdown,
     scoreBreakdown,
     deviceDelta,
     fit: scoreToFit(finalScore),
-    reasons: buildReasons(product, input, categoryRecommendation, scoreBreakdown, productCatalog, summary, deviceDelta),
+    reasons: buildReasons(product, input, categoryRecommendation, scoreBreakdown, productCatalog, summary, deviceDelta, ergonomicFit.reasons),
     explanation: explainProductRecommendation(product, input.profile, categoryRecommendation, input.inventory, finalScore),
     tradeoffs: buildTradeoffs(product, input),
     whyNotCheaper: explainCheaperAlternative(product, input, categoryRecommendation, productCatalog),
     whyNotMoreExpensive: explainMoreExpensiveAlternative(product, input, categoryRecommendation, productCatalog),
     isAspirational: effectivePriceCents(product, summary) > input.profile.budgetUsd * 100,
+    profileFieldsUsed: ergonomicFit.profileFieldsUsed,
+    missingDeviceSpecs: ergonomicFit.missingDeviceSpecs,
+    confidenceLevel: confidenceLevelForScore(confidence),
     currentBestPriceCents,
     priceDeltaFromExpected: currentBestPriceCents === null ? null : currentBestPriceCents - expectedPriceCents,
     lastCheckedAt: summary?.checkedAt ?? null,
@@ -365,14 +384,16 @@ function scoreCompatibilityFit(product: Product, input: RecommendationInput): nu
   return clampScore(score);
 }
 
-function scoreConfidence(product: Product, input: RecommendationInput): number {
+function scoreConfidence(product: Product, input: RecommendationInput, missingDeviceSpecs: string[] = []): number {
   const sameCategoryItem = input.inventory.find((item) => item.category === product.category);
+  const fitDataPenalty = missingDeviceSpecs.length > 0 ? 12 : 0;
+  const applyPenalty = (score: number) => clampScore(score - fitDataPenalty);
 
-  if (input.exactCurrentModelsProvided === true) return sameCategoryItem ? 90 : 80;
-  if (input.exactCurrentModelsProvided === false) return sameCategoryItem ? 60 : 66;
-  if (!sameCategoryItem) return input.inventory.length > 0 ? 72 : 56;
+  if (input.exactCurrentModelsProvided === true) return applyPenalty(sameCategoryItem ? 90 : 80);
+  if (input.exactCurrentModelsProvided === false) return applyPenalty(sameCategoryItem ? 60 : 66);
+  if (!sameCategoryItem) return applyPenalty(input.inventory.length > 0 ? 72 : 56);
 
-  return genericInventoryPattern.test(sameCategoryItem.name) ? 62 : 86;
+  return applyPenalty(genericInventoryPattern.test(sameCategoryItem.name) ? 62 : 86);
 }
 
 function buildReasons(
@@ -383,6 +404,7 @@ function buildReasons(
   productCatalog: Product[],
   summary: AvailabilitySummary | undefined,
   deviceDelta?: DeviceDelta,
+  fitReasons: string[] = [],
 ): string[] {
   const solvedProblems = input.profile.problems.filter((problem) => product.solves.includes(problem));
   const reasons = [...categoryRecommendation.reasons];
@@ -403,6 +425,8 @@ function buildReasons(
   if (deviceDelta?.explanationFacts[0]) {
     reasons.push(deviceDelta.explanationFacts[0]);
   }
+
+  reasons.push(...fitReasons);
 
   if (displayedPriceUsd > input.profile.budgetUsd) {
     reasons.push("Current listings run above budget, so this is a stretch option right now.");
@@ -588,6 +612,12 @@ function isFrugalSpender(profile: UserProfile): boolean {
 function isLeanSpender(profile: UserProfile): boolean {
   const style = profile.spendingStyle.toLowerCase();
   return style === "lean" || style === "frugal" || style === "value";
+}
+
+function confidenceLevelForScore(score: number): ProductRecommendation["confidenceLevel"] {
+  if (score >= 80) return "high";
+  if (score >= 62) return "medium";
+  return "low";
 }
 
 function hintScore(value: number): number {

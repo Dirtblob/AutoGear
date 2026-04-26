@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getCachedAvailabilitySummaries } from "@/lib/availability";
-import { productCatalog } from "@/data/productCatalog";
+import { getCurrentMongoUser } from "@/lib/devUser";
+import { replaceDevInventoryItems } from "@/lib/inventory/mongoInventory";
+import { loadMongoRecommendationProducts, recommendationProductToAvailabilityModel } from "@/lib/recommendation/mongoDeviceProducts";
 import {
   buildHackathonDemoRecommendationInput,
   hackathonDemoInventoryRecords,
@@ -12,7 +14,9 @@ import {
   serializeHackathonDemoProfile,
 } from "@/lib/recommendation/demoMode";
 import { rankProductsForInput } from "@/lib/recommendation/productEngine";
+import { saveRecommendationRunLog } from "@/lib/recommendation/recommendationLogs";
 import { buildToastHref } from "@/lib/ui/toasts";
+import { getCurrentUserPrivateProfile } from "@/lib/userPrivateProfiles";
 
 const DEMO_WATCHED_PRODUCT_ID = "stand-nexstand-k2";
 const DEMO_WATCHED_PRODUCT_TARGET_CENTS = 2500;
@@ -27,17 +31,37 @@ function priorityForScore(score: number): "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
 
 export async function runLaptopOnlyStudentDemoAction(): Promise<void> {
   const profileData = serializeHackathonDemoProfile();
-  const availabilityByProductId = await getCachedAvailabilitySummaries(productCatalog);
+  const candidateProducts = await loadMongoRecommendationProducts();
+  const availabilityByProductId = await getCachedAvailabilitySummaries(
+    candidateProducts.map((product) => recommendationProductToAvailabilityModel(product, { allowUsed: true })),
+  );
   const recommendationInput = {
     ...buildHackathonDemoRecommendationInput(),
+    candidateProducts,
     availabilityByProductId,
   };
   const recommendations = rankProductsForInput(recommendationInput).slice(0, 8);
+  const [mongoUser, privateProfile] = await Promise.all([
+    getCurrentMongoUser(),
+    getCurrentUserPrivateProfile(),
+  ]);
   const watchedRecommendation =
     recommendations.find((recommendation) => recommendation.product.id === DEMO_WATCHED_PRODUCT_ID) ??
     recommendations.find((recommendation) => recommendation.product.category === "laptop_stand") ??
     recommendations[0];
-  const watchedProduct = productCatalog.find((product) => product.id === watchedRecommendation?.product.id);
+  const watchedProduct = watchedRecommendation?.product;
+
+  await saveRecommendationRunLog({
+    userId: mongoUser.id,
+    inventory: recommendationInput.inventory,
+    recommendations,
+    allowRecommendationHistory: privateProfile?.privacy.allowRecommendationHistory ?? true,
+    privateTextRedactions: [
+      recommendationInput.profile.ageRange,
+      recommendationInput.profile.profession,
+      privateProfile?.profession,
+    ].filter((value): value is string => Boolean(value?.trim())),
+  });
 
   await db.$transaction(async (tx) => {
     await tx.userProfile.upsert({
@@ -52,18 +76,8 @@ export async function runLaptopOnlyStudentDemoAction(): Promise<void> {
     await tx.savedProduct.deleteMany({
       where: { userProfileId: hackathonDemoProfile.id },
     });
-    await tx.inventoryItem.deleteMany({
-      where: { userProfileId: hackathonDemoProfile.id },
-    });
     await tx.recommendation.deleteMany({
       where: { userProfileId: hackathonDemoProfile.id },
-    });
-
-    await tx.inventoryItem.createMany({
-      data: hackathonDemoInventoryRecords.map((item) => ({
-        ...item,
-        userProfileId: hackathonDemoProfile.id,
-      })),
     });
 
     if (recommendations.length > 0) {
@@ -106,7 +120,7 @@ export async function runLaptopOnlyStudentDemoAction(): Promise<void> {
           provider: "mock",
           title: `${watchedProduct.name} older demo listing`,
           brand: watchedProduct.brand,
-          model: watchedProduct.model,
+          model: watchedProduct.name,
           retailer: "Mock Marketplace",
           available: true,
           priceCents: DEMO_WATCHED_PRODUCT_OLD_PRICE_CENTS,
@@ -119,6 +133,15 @@ export async function runLaptopOnlyStudentDemoAction(): Promise<void> {
       });
     }
   });
+
+  await replaceDevInventoryItems(
+    hackathonDemoInventoryRecords.map((item) => ({
+      ...item,
+      brand: item.brand ?? "Unknown",
+      catalogProductId: null,
+      specsJson: null,
+    })),
+  );
 
   revalidatePath("/");
   revalidatePath("/inventory");

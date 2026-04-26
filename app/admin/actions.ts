@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { productCatalog } from "@/data/productCatalog";
+import { productCatalog } from "@/data/seeds/productCatalog";
 import { db } from "@/lib/db";
 import { refreshPrices } from "@/lib/jobs/refreshPrices";
 import { getPricesApiProviderName } from "@/lib/availability/pricesApiProvider";
+import { deleteDevInventoryItems, replaceDevInventoryItems } from "@/lib/inventory/mongoInventory";
 import { getPricesApiUsageSnapshot } from "@/lib/quota/pricesApiQuota";
 import {
   buildHackathonDemoRecommendationInput,
@@ -62,18 +63,8 @@ export async function runAdminDemoProfileAction(): Promise<void> {
     await tx.watchlistAlert.deleteMany({
       where: { userProfileId: hackathonDemoProfile.id },
     });
-    await tx.inventoryItem.deleteMany({
-      where: { userProfileId: hackathonDemoProfile.id },
-    });
     await tx.recommendation.deleteMany({
       where: { userProfileId: hackathonDemoProfile.id },
-    });
-
-    await tx.inventoryItem.createMany({
-      data: hackathonDemoInventoryRecords.map((item) => ({
-        ...item,
-        userProfileId: hackathonDemoProfile.id,
-      })),
     });
 
     if (recommendations.length > 0) {
@@ -94,6 +85,15 @@ export async function runAdminDemoProfileAction(): Promise<void> {
       });
     }
   });
+
+  await replaceDevInventoryItems(
+    hackathonDemoInventoryRecords.map((item) => ({
+      ...item,
+      brand: item.brand ?? "Unknown",
+      catalogProductId: null,
+      specsJson: null,
+    })),
+  );
 
   revalidateAdminPaths();
   redirect(buildToastHref("/admin", "demo_profile_ready"));
@@ -179,13 +179,11 @@ export async function clearAdminDemoDataAction(): Promise<void> {
     db.recommendation.deleteMany({
       where: { userProfileId: hackathonDemoProfile.id },
     }),
-    db.inventoryItem.deleteMany({
-      where: { userProfileId: hackathonDemoProfile.id },
-    }),
     db.userProfile.deleteMany({
       where: { id: hackathonDemoProfile.id },
     }),
   ]);
+  await deleteDevInventoryItems();
 
   revalidateAdminPaths();
   redirect(buildToastHref("/admin", "profile_deleted"));

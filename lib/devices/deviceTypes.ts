@@ -25,6 +25,9 @@ export const DEVICE_CATEGORIES = [
 export type DeviceCategory = (typeof DEVICE_CATEGORIES)[number];
 
 export type DeviceLifecycleStatus = "current" | "recent" | "older" | "discontinued" | "unknown";
+export type DeviceSoundLevel = "silent" | "quiet" | "normal" | "loud";
+export type DeviceClampForceLevel = "low" | "medium" | "high";
+export type DeviceNoiseIsolationLevel = "low" | "medium" | "high";
 
 export type DeviceSpecsValue =
   | string
@@ -38,6 +41,70 @@ export type DeviceSpecsValue =
 export type DeviceSpecs = Record<string, DeviceSpecsValue>;
 export type NormalizedDeviceSpecs = Record<string, DeviceSpecsValue>;
 export type DeviceTraitRatings = Record<string, number>;
+
+export interface DeviceDimensionsMm {
+  length?: number;
+  width?: number;
+  height?: number;
+}
+
+export interface MouseErgonomicSpecs {
+  lengthMm?: number;
+  widthMm?: number;
+  heightMm?: number;
+  weightGrams?: number;
+  recommendedGripStyles?: string[];
+  recommendedHandLengthMinMm?: number;
+  recommendedHandLengthMaxMm?: number;
+  recommendedPalmWidthMinMm?: number;
+  recommendedPalmWidthMaxMm?: number;
+}
+
+export interface KeyboardErgonomicSpecs {
+  layout?: string;
+  widthMm?: number;
+  depthMm?: number;
+  heightMm?: number;
+  switchType?: string;
+  actuationForceG?: number;
+  soundLevel?: DeviceSoundLevel;
+  ergonomicLayout?: boolean;
+}
+
+export interface HeadphonesErgonomicSpecs {
+  weightGrams?: number;
+  clampForceLevel?: DeviceClampForceLevel;
+  earCupInnerHeightMm?: number;
+  earCupInnerWidthMm?: number;
+  noiseIsolationLevel?: DeviceNoiseIsolationLevel;
+}
+
+export interface MonitorErgonomicSpecs {
+  screenSizeInches?: number;
+  resolution?: string;
+  refreshRateHz?: number;
+  curvatureR?: number;
+  standHeightAdjustable?: boolean;
+  vesaMount?: boolean;
+}
+
+export interface LaptopErgonomicSpecs {
+  screenSizeInches?: number;
+  weightGrams?: number;
+  keyboardLayout?: string;
+  batteryLifeHours?: number;
+}
+
+export interface DeviceErgonomicSpecs {
+  category: DeviceCategory;
+  weightGrams?: number;
+  dimensionsMm?: DeviceDimensionsMm;
+  mouse?: MouseErgonomicSpecs;
+  keyboard?: KeyboardErgonomicSpecs;
+  headphones?: HeadphonesErgonomicSpecs;
+  monitor?: MonitorErgonomicSpecs;
+  laptop?: LaptopErgonomicSpecs;
+}
 
 export const COMMON_DEVICE_TRAITS = [
   "speed",
@@ -170,6 +237,7 @@ export interface RawCatalogDevice {
   estimatedPriceCents: number;
   typicalUsedPriceCents?: number;
   specs: DeviceSpecs;
+  ergonomicSpecs?: DeviceErgonomicSpecs;
   normalizedSpecs?: NormalizedDeviceSpecs;
   traitRatings?: DeviceTraitRatings;
   traitConfidence?: number;
@@ -177,6 +245,8 @@ export interface RawCatalogDevice {
   lastVerifiedAt?: string;
   searchQueries?: string[];
 }
+
+export type DeviceCatalogItem = RawCatalogDevice;
 
 export interface CatalogDevice extends RawCatalogDevice {
   aliases: string[];

@@ -216,6 +216,12 @@ export function buildCategoryScoreBreakdown(
     leadProduct?.recommendation.scoreBreakdown.traitDeltaFit ??
       (categoryRecommendation.missingFromInventory ? 64 : 48),
   );
+  const ergonomicFit = clampScore(
+    leadProduct?.recommendation.scoreBreakdown.ergonomicFit ??
+      (categoryRecommendation.problemsAddressed.some((problem) => ["wrist_pain", "back_pain", "neck_pain"].includes(problem))
+        ? 66
+        : 58),
+  );
   const valueFit = clampScore(
     leadProduct?.recommendation.scoreBreakdown.valueFit ??
       (expensiveCategories.has(categoryRecommendation.category) ? 52 : 74),
@@ -235,6 +241,7 @@ export function buildCategoryScoreBreakdown(
 
   return {
     problemFit,
+    ergonomicFit,
     traitDeltaFit,
     constraintFit,
     valueFit,

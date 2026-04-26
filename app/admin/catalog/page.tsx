@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { catalogProducts } from "@/data/productCatalog";
+import { catalogProducts } from "@/data/seeds/productCatalog";
 import {
   catalogProductDedupeKey,
   deduplicateCatalogProductDetails,

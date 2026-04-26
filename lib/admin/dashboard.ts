@@ -1,4 +1,4 @@
-import { productCatalog } from "@/data/productCatalog";
+import { productCatalog } from "@/data/seeds/productCatalog";
 import { getPricesApiProviderName } from "@/lib/availability/pricesApiProvider";
 import { db } from "@/lib/db";
 import { getGemmaProviderFromEnv } from "@/lib/llm/gemmaProvider";
@@ -89,6 +89,8 @@ export async function buildAdminDashboardData() {
       usedItemsOkay: recommendationContext.usedItemsOkay,
       ports: recommendationContext.ports,
       deviceType: recommendationContext.deviceType,
+      privateProfile: recommendationContext.privateProfile,
+      candidateProducts: recommendationContext.candidateProducts,
     } as const;
     const baseline = rankProductsForInput(input).slice(0, 16);
     const reranked = rerankProductRecommendationsWithAvailability(

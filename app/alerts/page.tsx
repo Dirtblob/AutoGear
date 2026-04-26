@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { ensureCurrentUserProfile } from "@/lib/currentUser";
 import { db } from "@/lib/db";
-import { productCatalog } from "@/data/productCatalog";
+import { productCatalog } from "@/data/seeds/productCatalog";
 import { markAlertSeenAction } from "./actions";
 
 export const dynamic = "force-dynamic";
