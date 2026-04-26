@@ -4,7 +4,8 @@ import { ProductCard } from "@/components/ProductCard";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { ActionButton } from "@/components/ui/ActionButton";
-import { getCachedAvailabilitySummaries } from "@/lib/availability";
+import { productCatalog } from "@/data/seeds/productCatalog";
+import { getCachedAvailabilitySummaries, type AvailabilityProductModel, type AvailabilitySummary } from "@/lib/availability";
 import { loadCachedRecommendationPriceSnapshots } from "@/lib/availability/priceSnapshots";
 import { buildRecommendationNarrationId } from "@/lib/llm/explanationCache";
 import { readCachedRecommendationNarrations } from "@/lib/llm/recommendationNarrator";
@@ -16,16 +17,72 @@ import {
 } from "@/lib/recommendation/demoMode";
 import { getCategoryRecommendations } from "@/lib/recommendation/categoryEngine";
 import { categoryLabels } from "@/lib/recommendation/scoring";
+import type { Product, RecommendationPriceSnapshot } from "@/lib/recommendation/types";
 
 export const dynamic = "force-dynamic";
 
+async function loadDemoProducts(): Promise<Product[]> {
+  try {
+    const products = await loadMongoRecommendationProducts();
+    return products.length > 0 ? products : productCatalog;
+  } catch (error) {
+    console.warn("Falling back to static product catalog for landing page.", error);
+    return productCatalog;
+  }
+}
+
+async function loadDemoAvailability(
+  availabilityModels: AvailabilityProductModel[],
+): Promise<Record<string, AvailabilitySummary>> {
+  if (!process.env.DATABASE_URL?.trim()) {
+    return {};
+  }
+
+  try {
+    return await getCachedAvailabilitySummaries(availabilityModels);
+  } catch (error) {
+    console.warn("Falling back to empty availability cache for landing page.", error);
+    return {};
+  }
+}
+
+async function loadDemoPricing(
+  availabilityModels: AvailabilityProductModel[],
+): Promise<Record<string, RecommendationPriceSnapshot>> {
+  if (!process.env.MONGODB_URI?.trim()) {
+    return {};
+  }
+
+  try {
+    return await loadCachedRecommendationPriceSnapshots(availabilityModels);
+  } catch (error) {
+    console.warn("Falling back to empty price cache for landing page.", error);
+    return {};
+  }
+}
+
+async function loadDemoNarrations(
+  entries: Parameters<typeof readCachedRecommendationNarrations>[0],
+): Promise<Awaited<ReturnType<typeof readCachedRecommendationNarrations>>> {
+  if (!process.env.DATABASE_URL?.trim()) {
+    return [];
+  }
+
+  try {
+    return await readCachedRecommendationNarrations(entries, { recordMetrics: false });
+  } catch (error) {
+    console.warn("Falling back to deterministic recommendation copy for landing page.", error);
+    return [];
+  }
+}
+
 export default async function HomePage() {
-  const candidateProducts = await loadMongoRecommendationProducts();
+  const candidateProducts = await loadDemoProducts();
   const previewProducts = candidateProducts.slice(0, 3);
   const availabilityModels = candidateProducts.map((product) => recommendationProductToAvailabilityModel(product, { allowUsed: true }));
   const [cachedAvailabilityByProductId, pricingByProductId] = await Promise.all([
-    getCachedAvailabilitySummaries(availabilityModels),
-    loadCachedRecommendationPriceSnapshots(availabilityModels),
+    loadDemoAvailability(availabilityModels),
+    loadDemoPricing(availabilityModels),
   ]);
   const availabilityByProductId = cachedAvailabilityByProductId;
   const demoInput = {
@@ -39,7 +96,7 @@ export default async function HomePage() {
     .slice(0, 2)
     .flatMap((item) => (item.recommendation ? [item.recommendation] : []));
   const categoryRecommendations = getCategoryRecommendations(demoInput);
-  const narratedRecommendations = await readCachedRecommendationNarrations(
+  const narratedRecommendations = await loadDemoNarrations(
     topRecommendations.map((recommendation) => ({
       recommendationId: buildRecommendationNarrationId(demoInput.profile.id, recommendation.product.category),
       profile: demoInput.profile,
@@ -55,7 +112,6 @@ export default async function HomePage() {
       productRecommendation: recommendation,
       availability: availabilityByProductId[recommendation.product.id],
     })),
-    { recordMetrics: false },
   );
   const narrationByProductId = new Map(
     narratedRecommendations.map((entry) => [entry.input.productRecommendation.id, entry]),
