@@ -9,6 +9,8 @@ import { buildPricesApiDashboardMetrics } from "@/lib/quota/dashboard";
 import { getPricesApiUsageSnapshot } from "@/lib/quota/pricesApiQuota";
 import { buildToastHref } from "@/lib/ui/toasts";
 
+export const dynamic = "force-dynamic";
+
 function formatTimestamp(value: Date | null): string {
   if (!value) return "Never";
 

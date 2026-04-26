@@ -32,6 +32,8 @@ import { formatUsd } from "@/lib/ui/format";
 import { getAvailabilityForProduct, loadRecommendationContext } from "@/lib/userData";
 import { refreshRecommendationExplanation, toggleSavedProduct } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const sortOptions: Array<{ value: RecommendationSort; label: string }> = [

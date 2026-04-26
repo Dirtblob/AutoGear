@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { exportTrainingExamplesToJsonl } from "@/lib/llm/trainingData";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(): Promise<Response> {
   const examples = await db.trainingExample.findMany({
     orderBy: { createdAt: "asc" },

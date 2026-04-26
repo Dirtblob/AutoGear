@@ -1,15 +1,38 @@
-import Link from "next/link";
-import { db } from "@/lib/db";
-import { ensureCurrentUserProfile } from "@/lib/currentUser";
+"use client";
 
-export async function AlertsBell() {
-  const profile = await ensureCurrentUserProfile();
-  const unreadCount = await db.watchlistAlert.count({
-    where: {
-      userProfileId: profile.id,
-      seen: false,
-    },
-  });
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+interface AlertsUnreadCountResponse {
+  unreadCount?: number;
+}
+
+export function AlertsBell() {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadUnreadCount() {
+      try {
+        const response = await fetch("/api/alerts/unread-count", { cache: "no-store" });
+        if (!response.ok) return;
+
+        const payload = (await response.json()) as AlertsUnreadCountResponse;
+        if (isMounted) {
+          setUnreadCount(Math.max(0, payload.unreadCount ?? 0));
+        }
+      } catch {
+        // The alert badge should not block app chrome if the database is unavailable.
+      }
+    }
+
+    void loadUnreadCount();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <Link

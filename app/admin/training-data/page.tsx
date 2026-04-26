@@ -26,6 +26,8 @@ import { getProductRecommendations } from "@/lib/recommendation/productEngine";
 import { categoryLabels } from "@/lib/recommendation/scoring";
 import { getAvailabilityForProduct, loadLatestRecommendationContext, loadRecommendationContext } from "@/lib/userData";
 
+export const dynamic = "force-dynamic";
+
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const trainingSourceOptions: TrainingExampleSource[] = ["generated", "edited", "approved"];
