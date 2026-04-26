@@ -1,6 +1,6 @@
 import type { AvailabilitySummary } from "./types";
 
-export const PRICE_CACHE_FRESHNESS_MS = 12 * 60 * 60 * 1000;
+export const PRICE_CACHE_FRESHNESS_MS = 24 * 60 * 60 * 1000;
 
 export function isFreshPriceCheck(
   checkedAt: Date | null | undefined,
