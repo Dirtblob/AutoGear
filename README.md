@@ -1,6 +1,6 @@
 # AutoGear
 
-AutoGear is an accesible web application that helps people figure out the *next office equipment upgrade that will improve their setup and pain points that the user has*, recommending the most compatible products the user may not even know about.
+AutoGear is an accessible web application that helps people figure out the *next office equipment upgrade that will improve their setup and pain points that the user has*, recommending the most compatible products the user may not even know about.
 
 Most shopping tools start with "What do you want to buy?" AutoGear starts with "What do you already own, what is frustrating, what space or budget constraints matter, and what would make the biggest difference?" It turns that context into a ranked, explainable upgrade plan.
 
