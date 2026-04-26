@@ -1,6 +1,7 @@
 import type { UserProfile as PrismaUserProfile } from "@prisma/client";
 import { productCatalogToAvailabilityModels } from "@/lib/availability/catalogModels";
 import { getCachedAvailabilitySummaries } from "@/lib/availability";
+import { loadCachedRecommendationPriceSnapshots } from "@/lib/availability/priceSnapshots";
 import { db } from "@/lib/db";
 import { listDevInventoryItems, type MongoInventoryItem } from "@/lib/inventory/mongoInventory";
 import { getCategoryRecommendations } from "@/lib/recommendation/categoryEngine";
@@ -56,7 +57,11 @@ function mapProfile(record: PrismaUserProfile): UserProfile {
 
 export async function rerankRecommendations(): Promise<RerankRecommendationsResult> {
   const profiles = await db.userProfile.findMany();
-  const cachedAvailabilityByProductId = await getCachedAvailabilitySummaries(productCatalogToAvailabilityModels());
+  const availabilityModels = productCatalogToAvailabilityModels();
+  const [cachedAvailabilityByProductId, pricingByProductId] = await Promise.all([
+    getCachedAvailabilitySummaries(availabilityModels),
+    loadCachedRecommendationPriceSnapshots(availabilityModels),
+  ]);
   const inventoryRecords = await listDevInventoryItems();
   const inventory = inventoryRecords.map(mapInventoryItem);
   let recommendationCount = 0;
@@ -69,6 +74,7 @@ export async function rerankRecommendations(): Promise<RerankRecommendationsResu
       usedItemsOkay: profileRecord.usedItemsOkay,
       exactCurrentModelsProvided: inventory.some((item) => item.name.trim().length > 0),
       availabilityByProductId: cachedAvailabilityByProductId,
+      pricingByProductId,
     };
     const categories = getCategoryRecommendations(input);
     const products = rankProductsForInput(input);

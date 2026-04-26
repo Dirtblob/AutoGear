@@ -30,6 +30,8 @@ type MongoDeviceDocument = Document & {
 export type MongoCatalogDevice = CatalogDevice & {
   _id: string;
   searchText?: string;
+  slug?: string;
+  variant?: string | null;
 };
 
 function escapeRegex(value: string): string {
@@ -116,6 +118,8 @@ function normalizeMongoDevice(document: MongoDeviceDocument): MongoCatalogDevice
   const objectId = String(document._id);
   const brand = stringValue(document.brand);
   const model = stringValue(document.model);
+  const slug = stringValue(document.slug);
+  const variant = stringValue(document.variant) || null;
   const displayName = stringValue(document.displayName, [brand, model].filter(Boolean).join(" "));
 
   if (!brand || !model || !displayName) return null;
@@ -167,6 +171,8 @@ function normalizeMongoDevice(document: MongoDeviceDocument): MongoCatalogDevice
 
   return {
     _id: objectId,
+    slug: slug || undefined,
+    variant,
     ...enriched,
     normalizedSpecs: hasObjectKeys(precomputedNormalizedSpecs) ? precomputedNormalizedSpecs : enriched.normalizedSpecs,
     traitRatings: hasObjectKeys(precomputedTraitRatings) ? precomputedTraitRatings : enriched.traitRatings,
@@ -184,6 +190,8 @@ function normalizeMongoDevice(document: MongoDeviceDocument): MongoCatalogDevice
 function serializeDevice(device: MongoCatalogDevice): MongoCatalogDevice {
   return {
     _id: device._id,
+    slug: device.slug,
+    variant: device.variant ?? null,
     id: device.id,
     category: device.category,
     brand: device.brand,
@@ -214,15 +222,23 @@ async function getDeviceCollection() {
   return database.collection<MongoDeviceDocument>(DEVICE_COLLECTION);
 }
 
-export async function findMongoDeviceById(id: string | null | undefined): Promise<MongoCatalogDevice | null> {
-  if (!id) return null;
+export async function findMongoDeviceByIdentifier(identifier: string | null | undefined): Promise<MongoCatalogDevice | null> {
+  if (!identifier) return null;
 
   const collection = await getDeviceCollection();
   const document = await collection.findOne({
-    $or: [{ id }, ...objectIdFilter(id)],
+    $or: [
+      { id: identifier },
+      { slug: identifier },
+      ...objectIdFilter(identifier),
+    ],
   });
 
   return document ? normalizeMongoDevice(document) : null;
+}
+
+export async function findMongoDeviceById(id: string | null | undefined): Promise<MongoCatalogDevice | null> {
+  return findMongoDeviceByIdentifier(id);
 }
 
 export async function searchMongoDevices(input: {
@@ -233,7 +249,7 @@ export async function searchMongoDevices(input: {
   id?: string | null;
 }): Promise<MongoCatalogDevice[]> {
   if (input.id) {
-    const device = await findMongoDeviceById(input.id);
+    const device = await findMongoDeviceByIdentifier(input.id);
     return device ? [serializeDevice(device)] : [];
   }
 

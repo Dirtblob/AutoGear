@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findManyMock, createManyMock, canUsePricesApiMock } = vi.hoisted(() => ({
+const { findManyMock, createManyMock } = vi.hoisted(() => ({
   findManyMock: vi.fn(),
   createManyMock: vi.fn(),
-  canUsePricesApiMock: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -16,7 +15,6 @@ vi.mock("@/lib/db", () => ({
 }));
 
 vi.mock("@/lib/quota/pricesApiQuota", () => ({
-  canUsePricesApi: canUsePricesApiMock,
   recordPricesApiUsage: vi.fn(),
   reservePricesApiCall: vi.fn().mockResolvedValue(true),
 }));
@@ -25,11 +23,9 @@ describe("getAvailabilitySummaries", () => {
   beforeEach(() => {
     findManyMock.mockReset();
     createManyMock.mockReset();
-    canUsePricesApiMock.mockReset();
   });
 
   it("falls back to cached prices when quota is exhausted", async () => {
-    canUsePricesApiMock.mockResolvedValue(false);
     findManyMock.mockResolvedValue([
       {
         productModelId: "monitor-dell-s2722qc",
@@ -50,7 +46,10 @@ describe("getAvailabilitySummaries", () => {
       },
     ]);
 
-    const { getAvailabilitySummaries } = await import("./index");
+    const [{ getAvailabilitySummaries }, { PricesApiQuotaLimitedError }] = await Promise.all([
+      import("./index"),
+      import("./pricesApiProvider"),
+    ]);
     const summaries = await getAvailabilitySummaries(
       [
         {
@@ -64,7 +63,7 @@ describe("getAvailabilitySummaries", () => {
       {
         provider: {
           name: "pricesapi",
-          search: vi.fn(),
+          search: vi.fn().mockRejectedValue(new PricesApiQuotaLimitedError("pricesapi")),
         },
         refreshProductIds: ["monitor-dell-s2722qc"],
       },

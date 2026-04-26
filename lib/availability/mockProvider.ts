@@ -39,10 +39,15 @@ export const mockAvailabilityProvider: AvailabilityProvider = {
     const checkedAt = new Date();
 
     if (scenario.length === 0) {
-      return [];
+      return {
+        listings: [],
+        checkedAt,
+        refreshSource: "live",
+        isStale: false,
+      };
     }
 
-    return scenario.map((listing, index) => {
+    const listings = scenario.map((listing, index) => {
       const fallbackCondition = conditions[(seed + index) % conditions.length];
       const condition = listing.condition ?? fallbackCondition;
       const estimatedPriceCents = productModel.estimatedPriceCents ?? 0;
@@ -64,5 +69,12 @@ export const mockAvailabilityProvider: AvailabilityProvider = {
         checkedAt,
       } satisfies AvailabilityResult;
     }).sort(compareAvailabilityResults);
+
+    return {
+      listings,
+      checkedAt,
+      refreshSource: "live",
+      isStale: false,
+    };
   },
 };

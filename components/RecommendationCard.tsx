@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { AvailabilitySummary } from "@/lib/availability";
-import { availabilityDetailMessages, getAvailabilityStatusBadge } from "@/lib/availability/display";
+import { buildLivePriceCardState } from "@/lib/availability/livePrice";
 import type { LLMRecommendationOutput, RecommendationNarrationSource } from "@/lib/llm/types";
 import { categoryLabels } from "@/lib/recommendation/scoring";
 import type { ProductRecommendation } from "@/lib/recommendation/types";
 import { formatUsd, formatUsdFromCents } from "@/lib/ui/format";
 import { DeviceDeltaComparison } from "./DeviceDeltaComparison";
+import { LivePricePanel } from "./LivePricePanel";
 import { ScoreBadge } from "./ScoreBadge";
 
 interface RecommendationCardProps {
@@ -22,10 +23,9 @@ function narratorSourceLabel(source: RecommendationNarrationSource | null | unde
 export function RecommendationCard({ recommendation, availability, narration, narrationSource }: RecommendationCardProps) {
   const { product } = recommendation;
   const summary = product.strengths.slice(0, 2).join(", ");
-  const availabilityMessages = availabilityDetailMessages(availability);
-  const priceStatusBadge = getAvailabilityStatusBadge(availability);
   const displayedPrice =
     recommendation.currentBestPriceCents === null ? formatUsd(product.priceUsd) : formatUsdFromCents(recommendation.currentBestPriceCents);
+  const livePriceState = buildLivePriceCardState(availability, Math.round(product.priceUsd * 100));
   const betterThanCurrentRow = recommendation.deviceDelta?.explanationFacts[0]
     ? (["Why this is better", recommendation.deviceDelta.explanationFacts[0]] satisfies [string, string])
     : null;
@@ -59,21 +59,6 @@ export function RecommendationCard({ recommendation, availability, narration, na
           <p className="mt-1 text-sm font-medium text-ink/55">
             {product.brand} · {displayedPrice} · {availability?.label ?? "Checking not configured"}
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full bg-mist px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-ink/60">
-              {availability?.label ?? "Checking not configured"}
-            </span>
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${priceStatusBadge.className}`}>
-              {priceStatusBadge.label}
-            </span>
-          </div>
-          {availabilityMessages.length > 0 ? (
-            <div className="mt-2 space-y-1 text-xs leading-5 text-ink/48">
-              {availabilityMessages.map((message) => (
-                <p key={message}>{message}</p>
-              ))}
-            </div>
-          ) : null}
         </div>
         <ScoreBadge score={recommendation.score} size="md" />
       </div>
@@ -109,6 +94,14 @@ export function RecommendationCard({ recommendation, availability, narration, na
       </dl>
 
       <DeviceDeltaComparison delta={recommendation.deviceDelta} />
+
+      <div className="mt-5">
+        <LivePricePanel
+          deviceCatalogId={product.catalogDeviceId ?? product.id}
+          slug={product.catalogDeviceId ?? product.id}
+          initialState={livePriceState}
+        />
+      </div>
 
       {narration?.followUpQuestion ? (
         <div className="mt-5 rounded-2xl border border-dashed border-moss/20 bg-white p-4 text-sm leading-6 text-ink/68">

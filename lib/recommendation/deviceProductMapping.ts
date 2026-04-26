@@ -95,7 +95,8 @@ export function deviceToRecommendationProduct(device: MongoCatalogDevice): Produ
   if (!category) return null;
 
   const traits = device.traitRatings;
-  const priceUsd = Math.max(1, Math.round((device.estimatedPriceCents || device.typicalUsedPriceCents || 100) / 100));
+  const estimatedPriceCents = device.estimatedPriceCents || device.typicalUsedPriceCents || 100;
+  const priceUsd = Math.max(1, Math.round(estimatedPriceCents / 100));
   const strengths = device.strengths.length > 0 ? device.strengths : [`Strong ${category.replaceAll("_", " ")} trait fit`];
 
   return {
@@ -104,6 +105,8 @@ export function deviceToRecommendationProduct(device: MongoCatalogDevice): Produ
     brand: device.brand,
     category,
     priceUsd,
+    estimatedPriceCents: device.estimatedPriceCents,
+    typicalUsedPriceCents: device.typicalUsedPriceCents,
     shortDescription: strengths.join("; ") + ".",
     strengths,
     solves: traitDrivenProblems(device, category),
@@ -157,8 +160,10 @@ export function recommendationProductToAvailabilityModel(
     model: product.name,
     displayName: product.name,
     category: product.category,
-    estimatedPriceCents: product.priceUsd * 100,
+    estimatedPriceCents: product.estimatedPriceCents ?? product.typicalUsedPriceCents ?? product.priceUsd * 100,
     searchQueries: [`${product.brand} ${product.name}`, product.name],
     allowUsed: options.allowUsed,
+    deviceCatalogId: product.catalogDeviceId ?? product.id,
+    slug: product.catalogDeviceId ?? product.id,
   };
 }

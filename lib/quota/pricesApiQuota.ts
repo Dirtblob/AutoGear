@@ -1,55 +1,60 @@
-import { db } from "@/lib/db";
-import type { CanUsePricesApiOptions, ApiUsagePeriodType, PricesApiUsagePolicy, PricesApiUsageSnapshot } from "./types";
+import "server-only";
 
-const DEFAULT_MONTHLY_HARD_LIMIT = 950;
-const DEFAULT_DAILY_SOFT_LIMIT = 30;
-const DEFAULT_MINUTE_HARD_LIMIT = 8;
-const DEFAULT_RESERVE_MONTHLY_CALLS = 50;
+import { ObjectId, type Collection } from "mongodb";
+import { getMongoDatabase } from "@/lib/mongodb";
+import type { ApiUsageEventInput, CanUsePricesApiOptions, PricesApiUsagePolicy, PricesApiUsageSnapshot } from "./types";
 
-interface QuotaDbClient {
-  priceRefreshPolicy: {
-    findUnique(args: { where: { provider: string } }): Promise<{
-      provider: string;
-      monthlyHardLimit: number;
-      dailySoftLimit: number;
-      minuteHardLimit: number;
-      reserveMonthlyCalls: number;
-    } | null>;
-  };
-  apiUsage: {
-    findUnique(args: {
-      where: {
-        provider_periodType_periodKey: {
-          provider: string;
-          periodType: ApiUsagePeriodType;
-          periodKey: string;
-        };
-      };
-    }): Promise<{ callCount: number } | null>;
-    upsert(args: {
-      where: {
-        provider_periodType_periodKey: {
-          provider: string;
-          periodType: ApiUsagePeriodType;
-          periodKey: string;
-        };
-      };
-      update: {
-        callCount: {
-          increment: number;
-        };
-      };
-      create: {
-        provider: string;
-        periodType: ApiUsagePeriodType;
-        periodKey: string;
-        callCount: number;
-      };
-    }): Promise<unknown>;
-  };
+const API_USAGE_EVENTS_COLLECTION = "api_usage_events";
+const DEFAULT_PROVIDER = "pricesapi";
+const DEFAULT_LIMIT_PER_MINUTE = 10;
+const DEFAULT_LIMIT_PER_MONTH = 1000;
+
+interface ApiUsageEventDocument {
+  _id: ObjectId | string;
+  provider: "pricesapi";
+  eventType: "price_lookup";
+  query: string;
+  normalizedQuery: string;
+  deviceCatalogId?: string;
+  userId?: string;
+  success: boolean;
+  requestCount: number;
+  createdAt: Date;
 }
 
-export function buildPeriodKey(periodType: ApiUsagePeriodType, now: Date): string {
+type ApiUsageEventInsertDocument = Omit<ApiUsageEventDocument, "_id"> & {
+  _id?: ObjectId | string;
+};
+
+interface ApiUsageWindowCollection {
+  insertOne(document: ApiUsageEventInsertDocument): Promise<{ insertedId: ObjectId | string }>;
+  updateOne(filter: { _id: ObjectId | string }, update: { $set: { success: boolean } }): Promise<unknown>;
+  aggregate(pipeline: Record<string, unknown>[]): { toArray(): Promise<Array<{ total: number }>> };
+}
+
+function definedText(value: string | undefined | null): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function positiveIntegerFromEnv(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value?.trim() ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function minuteWindowStart(now: Date): Date {
+  return new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    now.getUTCHours(),
+    now.getUTCMinutes(),
+    0,
+    0,
+  ));
+}
+
+export function buildPeriodKey(periodType: "minute" | "day" | "month", now: Date): string {
   const year = now.getUTCFullYear();
   const month = String(now.getUTCMonth() + 1).padStart(2, "0");
   const day = String(now.getUTCDate()).padStart(2, "0");
@@ -61,138 +66,150 @@ export function buildPeriodKey(periodType: ApiUsagePeriodType, now: Date): strin
   return `${year}-${month}-${day}-${hour}:${minute}`;
 }
 
-export function buildDefaultPriceRefreshPolicy(provider: string): PricesApiUsagePolicy {
+function nextMinuteWindowStart(now: Date): Date {
+  const start = minuteWindowStart(now);
+  return new Date(start.getTime() + 60 * 1000);
+}
+
+function monthWindowStart(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+}
+
+function nextMonthWindowStart(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+}
+
+async function getApiUsageEventsCollection(): Promise<Collection<ApiUsageEventInsertDocument>> {
+  const database = await getMongoDatabase();
+  return database.collection<ApiUsageEventInsertDocument>(API_USAGE_EVENTS_COLLECTION);
+}
+
+function getPricesApiUsagePolicy(): PricesApiUsagePolicy {
   return {
-    provider,
-    monthlyHardLimit: DEFAULT_MONTHLY_HARD_LIMIT,
-    dailySoftLimit: DEFAULT_DAILY_SOFT_LIMIT,
-    minuteHardLimit: DEFAULT_MINUTE_HARD_LIMIT,
-    reserveMonthlyCalls: DEFAULT_RESERVE_MONTHLY_CALLS,
+    provider: DEFAULT_PROVIDER,
+    limitPerMinute: positiveIntegerFromEnv(process.env.PRICES_API_LIMIT_PER_MINUTE, DEFAULT_LIMIT_PER_MINUTE),
+    limitPerMonth: positiveIntegerFromEnv(process.env.PRICES_API_LIMIT_PER_MONTH, DEFAULT_LIMIT_PER_MONTH),
   };
 }
 
-export async function getPriceRefreshPolicy(
-  provider: string,
-  quotaDb: QuotaDbClient = db as unknown as QuotaDbClient,
-): Promise<PricesApiUsagePolicy> {
-  const storedPolicy = await quotaDb.priceRefreshPolicy.findUnique({
-    where: { provider },
+async function aggregateUsageCount(
+  range: { start: Date; end: Date },
+  provider: "pricesapi" = DEFAULT_PROVIDER,
+  collection?: ApiUsageWindowCollection,
+): Promise<number> {
+  const target = collection ?? (await getApiUsageEventsCollection());
+  const rows = await target.aggregate([
+    {
+      $match: {
+        provider,
+        createdAt: {
+          $gte: range.start,
+          $lt: range.end,
+        },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: "$requestCount" },
+      },
+    },
+  ]).toArray();
+
+  return rows[0]?.total ?? 0;
+}
+
+export async function recordApiUsageEvent(
+  input: ApiUsageEventInput,
+  collection?: ApiUsageWindowCollection,
+): Promise<string> {
+  const createdAt = input.createdAt ?? new Date();
+  const target = collection ?? (await getApiUsageEventsCollection());
+  const result = await target.insertOne({
+    provider: DEFAULT_PROVIDER,
+    eventType: "price_lookup",
+    query: input.query,
+    normalizedQuery: input.normalizedQuery,
+    deviceCatalogId: definedText(input.deviceCatalogId),
+    userId: definedText(input.userId),
+    success: input.success,
+    requestCount: Math.max(1, input.requestCount ?? 1),
+    createdAt,
   });
 
-  if (!storedPolicy) {
-    return buildDefaultPriceRefreshPolicy(provider);
-  }
+  return String(result.insertedId);
+}
 
-  return {
-    provider: storedPolicy.provider,
-    monthlyHardLimit: storedPolicy.monthlyHardLimit,
-    dailySoftLimit: storedPolicy.dailySoftLimit,
-    minuteHardLimit: storedPolicy.minuteHardLimit,
-    reserveMonthlyCalls: storedPolicy.reserveMonthlyCalls,
-  };
+export async function finalizeApiUsageEvent(
+  id: string | ObjectId,
+  success: boolean,
+  collection?: ApiUsageWindowCollection,
+): Promise<void> {
+  const target = collection ?? (await getApiUsageEventsCollection());
+  await target.updateOne(
+    { _id: typeof id === "string" && ObjectId.isValid(id) ? new ObjectId(id) : id },
+    { $set: { success } },
+  );
+}
+
+export async function getPricesApiUsageForCurrentMinute(
+  now: Date = new Date(),
+  collection?: ApiUsageWindowCollection,
+): Promise<number> {
+  return aggregateUsageCount(
+    {
+      start: minuteWindowStart(now),
+      end: nextMinuteWindowStart(now),
+    },
+    DEFAULT_PROVIDER,
+    collection,
+  );
+}
+
+export async function getPricesApiUsageForCurrentMonth(
+  now: Date = new Date(),
+  collection?: ApiUsageWindowCollection,
+): Promise<number> {
+  return aggregateUsageCount(
+    {
+      start: monthWindowStart(now),
+      end: nextMonthWindowStart(now),
+    },
+    DEFAULT_PROVIDER,
+    collection,
+  );
 }
 
 export async function getPricesApiUsageSnapshot(
-  provider: string,
+  _provider: string,
   now: Date = new Date(),
-  quotaDb: QuotaDbClient = db as unknown as QuotaDbClient,
+  collection?: ApiUsageWindowCollection,
 ): Promise<PricesApiUsageSnapshot> {
-  const policy = await getPriceRefreshPolicy(provider, quotaDb);
-  const [minuteUsage, dailyUsage, monthlyUsage] = await Promise.all([
-    quotaDb.apiUsage.findUnique({
-      where: {
-        provider_periodType_periodKey: {
-          provider,
-          periodType: "minute",
-          periodKey: buildPeriodKey("minute", now),
-        },
-      },
-    }),
-    quotaDb.apiUsage.findUnique({
-      where: {
-        provider_periodType_periodKey: {
-          provider,
-          periodType: "day",
-          periodKey: buildPeriodKey("day", now),
-        },
-      },
-    }),
-    quotaDb.apiUsage.findUnique({
-      where: {
-        provider_periodType_periodKey: {
-          provider,
-          periodType: "month",
-          periodKey: buildPeriodKey("month", now),
-        },
-      },
-    }),
+  const policy = getPricesApiUsagePolicy();
+  const [minuteCallsUsed, monthlyCallsUsed] = await Promise.all([
+    getPricesApiUsageForCurrentMinute(now, collection),
+    getPricesApiUsageForCurrentMonth(now, collection),
   ]);
-
-  const minuteCallsUsed = minuteUsage?.callCount ?? 0;
-  const dailyCallsUsed = dailyUsage?.callCount ?? 0;
-  const monthlyCallsUsed = monthlyUsage?.callCount ?? 0;
-  const minuteRemaining = Math.max(0, policy.minuteHardLimit - minuteCallsUsed);
-  const dailyRemaining = Math.max(0, policy.dailySoftLimit - dailyCallsUsed);
-  const monthlyRemaining = Math.max(0, policy.monthlyHardLimit - monthlyCallsUsed);
-  const reserveRemaining = Math.max(0, policy.reserveMonthlyCalls - Math.max(0, monthlyCallsUsed - policy.monthlyHardLimit));
 
   return {
     policy,
     minuteCallsUsed,
-    dailyCallsUsed,
     monthlyCallsUsed,
-    minuteRemaining,
-    dailyRemaining,
-    monthlyRemaining,
-    reserveRemaining,
+    minuteRemaining: Math.max(0, policy.limitPerMinute - minuteCallsUsed),
+    monthlyRemaining: Math.max(0, policy.limitPerMonth - monthlyCallsUsed),
   };
 }
 
-export async function canUsePricesApi(
+export async function canCallPricesApi(
   provider: string,
   options: CanUsePricesApiOptions = {},
-  quotaDb: QuotaDbClient = db as unknown as QuotaDbClient,
+  collection?: ApiUsageWindowCollection,
 ): Promise<boolean> {
-  const snapshot = await getPricesApiUsageSnapshot(provider, options.now ?? new Date(), quotaDb);
+  const snapshot = await getPricesApiUsageSnapshot(provider, options.now ?? new Date(), collection);
+  const requestCount = Math.max(1, options.requestCount ?? 1);
 
-  if (snapshot.monthlyRemaining <= 0) return false;
-  if (snapshot.minuteRemaining <= 0) return false;
-  if (!options.manualRefresh && snapshot.dailyRemaining <= 0) return false;
-
-  return true;
-}
-
-export async function recordPricesApiUsage(
-  provider: string,
-  now: Date = new Date(),
-  quotaDb: QuotaDbClient = db as unknown as QuotaDbClient,
-): Promise<void> {
-  const periods: ApiUsagePeriodType[] = ["minute", "day", "month"];
-
-  await Promise.all(
-    periods.map((periodType) =>
-      quotaDb.apiUsage.upsert({
-        where: {
-          provider_periodType_periodKey: {
-            provider,
-            periodType,
-            periodKey: buildPeriodKey(periodType, now),
-          },
-        },
-        update: {
-          callCount: {
-            increment: 1,
-          },
-        },
-        create: {
-          provider,
-          periodType,
-          periodKey: buildPeriodKey(periodType, now),
-          callCount: 1,
-        },
-      }),
-    ),
-  );
+  return snapshot.minuteCallsUsed + requestCount <= snapshot.policy.limitPerMinute
+    && snapshot.monthlyCallsUsed + requestCount <= snapshot.policy.limitPerMonth;
 }
 
 let pricesApiReservationQueue: Promise<unknown> = Promise.resolve();
@@ -205,18 +222,31 @@ function enqueuePricesApiReservation<T>(task: () => Promise<T>): Promise<T> {
 
 export async function reservePricesApiCall(
   provider: string,
-  options: CanUsePricesApiOptions = {},
-  quotaDb: QuotaDbClient = db as unknown as QuotaDbClient,
-): Promise<boolean> {
+  input: Omit<ApiUsageEventInput, "success"> & { success?: boolean; now?: Date },
+  collection?: ApiUsageWindowCollection,
+): Promise<string | null> {
   return enqueuePricesApiReservation(async () => {
-    const now = options.now ?? new Date();
-    const allowed = await canUsePricesApi(provider, { ...options, now }, quotaDb);
+    const createdAt = input.now ?? input.createdAt ?? new Date();
+    const allowed = await canCallPricesApi(
+      provider,
+      {
+        now: createdAt,
+        requestCount: input.requestCount,
+      },
+      collection,
+    );
 
     if (!allowed) {
-      return false;
+      return null;
     }
 
-    await recordPricesApiUsage(provider, now, quotaDb);
-    return true;
+    return recordApiUsageEvent(
+      {
+        ...input,
+        success: input.success ?? false,
+        createdAt,
+      },
+      collection,
+    );
   });
 }

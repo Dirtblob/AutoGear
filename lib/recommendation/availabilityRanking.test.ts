@@ -47,6 +47,11 @@ function recommendation(
     lastCheckedAt: null,
     availabilityStatus: "unknown",
     rankingChangedReason: "Baseline ranking",
+    bestOffer: null,
+    estimatedMarketPriceCents: null,
+    priceStatus: "catalog_estimate",
+    fetchedAt: null,
+    priceConfidence: 38,
     scoreBreakdown: {
       problemFit: score,
       ergonomicFit: score,

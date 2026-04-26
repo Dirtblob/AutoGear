@@ -94,7 +94,7 @@ LifeUpgrade uses PricesAPI.io as a background-only price source.
 - Offers lookup: `GET /api/v1/products/{id}/offers?country={country}`
 - Auth header: `x-api-key: {PRICES_API_KEY}`
 
-The offers endpoint can take 5-30 seconds, so it is never called from React components or page render. `refreshPrices()` performs search and offers lookups in the background, writes normalized `AvailabilitySnapshot` rows, and recommendation pages use those cached rows.
+The offers endpoint can take 5-30 seconds, so it is never called from React components or page render. `refreshPrices()` performs search and offers lookups in the background, writes normalized `AvailabilitySnapshot` rows, and recommendation pages use those cached rows. Recommendation runs are cache-only by default; `AUTO_REFRESH_TOP_RECOMMENDATION_PRICE=true` may refresh only the current #1 recommendation when no fresh cache exists and quota is healthy.
 
 ## PricesAPI Free-Tier Policy
 
@@ -178,6 +178,7 @@ CRON_SECRET="replace-me"
 PRICES_API_BASE_URL="https://api.pricesapi.io"
 PRICES_API_KEY="replace-me"
 PRICES_API_COUNTRY="us"
+AUTO_REFRESH_TOP_RECOMMENDATION_PRICE="false"
 GEMINI_API_KEY="replace-me"
 GEMINI_MODEL="gemma-4-26b-a4b-it"
 GEMINI_DAILY_SOFT_CAP="200"
@@ -188,7 +189,7 @@ server code uses the temporary `DEV_USER_ID` value for every inventory item and 
 For local-only testing, `MONGODB_URI="mongodb://localhost:27017/lifeupgrade"` also works. For Atlas, use the Atlas
 connection string and make sure the local IP is allowed in Network Access.
 
-`AVAILABILITY_PROVIDER` defaults to `mock`. Use `pricesapi` only when `PRICES_API_KEY` is configured. `PRICES_API_BASE_URL` defaults to `https://api.pricesapi.io`, and the old `PRICE_API_*` env vars still work as temporary fallbacks. If the PricesAPI provider is selected without credentials, LifeUpgrade falls back to mock availability.
+`AVAILABILITY_PROVIDER` defaults to `mock`. Use `pricesapi` only when `PRICES_API_KEY` is configured. `PRICES_API_BASE_URL` defaults to `https://api.pricesapi.io`, and the old `PRICE_API_*` env vars still work as temporary fallbacks. If the PricesAPI provider is selected without credentials, LifeUpgrade falls back to mock availability. `AUTO_REFRESH_TOP_RECOMMENDATION_PRICE` defaults to `false`; when enabled it still checks the fresh cache, monthly reserve, and minute quota before a live lookup.
 
 `GEMINI_API_KEY` enables hosted Gemma 4 narration through the Gemini API. `GEMINI_MODEL` defaults to `gemma-4-26b-a4b-it`, and `GEMINI_DAILY_SOFT_CAP` defaults to `200`. The admin dashboard includes a `Test Gemma explanation` button that generates or refreshes a cached demo recommendation explanation and reports whether Gemini or deterministic fallback handled it.
 

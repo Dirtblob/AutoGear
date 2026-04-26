@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { getCachedAvailabilitySummaries } from "@/lib/availability";
 import { availabilityDetailMessages } from "@/lib/availability/display";
+import { loadCachedRecommendationPriceSnapshots } from "@/lib/availability/priceSnapshots";
 import { recordRecentlyViewedProduct } from "@/lib/jobs/selectProductsForRefresh";
 import { loadMongoRecommendationProducts, recommendationProductToAvailabilityModel } from "@/lib/recommendation/mongoDeviceProducts";
 import { getCategoryRecommendations } from "@/lib/recommendation/categoryEngine";
@@ -25,11 +26,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const product = candidateProducts.find((candidate) => candidate.id === id);
   if (!product) notFound();
 
-  const availability = (
-    await getCachedAvailabilitySummaries([
-      recommendationProductToAvailabilityModel(product, { allowUsed: context?.usedItemsOkay }),
-    ])
-  )[product.id];
+  const availabilityModel = recommendationProductToAvailabilityModel(product, { allowUsed: context?.usedItemsOkay });
+  const [availability, pricingByProductId] = await Promise.all([
+    getCachedAvailabilitySummaries([availabilityModel]).then((summaries) => summaries[product.id]),
+    context?.pricingByProductId
+      ? Promise.resolve(Object.fromEntries(context.pricingByProductId))
+      : loadCachedRecommendationPriceSnapshots([availabilityModel]),
+  ]);
   const availabilityMessages = availabilityDetailMessages(availability);
   const recommendationInput = context
     ? {
@@ -42,6 +45,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         availabilityByProductId: {
           [product.id]: availability,
         },
+        pricingByProductId,
       }
     : null;
   const recommendation = recommendationInput

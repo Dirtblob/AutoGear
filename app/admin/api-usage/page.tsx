@@ -25,20 +25,20 @@ async function runRefreshNowAction(): Promise<void> {
 
   const providerName = getPricesApiProviderName();
   const snapshot = await getPricesApiUsageSnapshot(providerName);
-  const hasCapacity = snapshot.monthlyRemaining > 0 && snapshot.dailyRemaining > 0 && snapshot.minuteRemaining > 0;
+  const hasCapacity = snapshot.monthlyRemaining > 0 && snapshot.minuteRemaining > 0;
 
   if (!hasCapacity) {
     redirect(buildToastHref("/admin/api-usage", "price_refresh_quota_blocked"));
   }
 
-  const lowDailyQuota = snapshot.dailyRemaining < 10;
+  const lowMonthlyQuota = snapshot.monthlyRemaining < 100;
 
   await refreshPrices();
 
   revalidatePath("/");
   revalidatePath("/recommendations");
   revalidatePath("/admin/api-usage");
-  redirect(buildToastHref("/admin/api-usage", lowDailyQuota ? "price_refresh_low_quota" : "price_refresh_completed"));
+  redirect(buildToastHref("/admin/api-usage", lowMonthlyQuota ? "price_refresh_low_quota" : "price_refresh_completed"));
 }
 
 export default async function ApiUsagePage() {
@@ -52,8 +52,8 @@ export default async function ApiUsagePage() {
     }),
   ]);
   const metrics = buildPricesApiDashboardMetrics(snapshot, now);
-  const lowDailyQuota = snapshot.dailyRemaining < 10;
-  const refreshBlocked = snapshot.monthlyRemaining <= 0 || snapshot.dailyRemaining <= 0 || snapshot.minuteRemaining <= 0;
+  const lowMonthlyQuota = snapshot.monthlyRemaining < 100;
+  const refreshBlocked = snapshot.monthlyRemaining <= 0 || snapshot.minuteRemaining <= 0;
   const estimatedDaysRemainingLabel =
     metrics.estimatedQuotaDaysRemaining === null
       ? `${metrics.calendarDaysRemaining}+ days`
@@ -90,12 +90,12 @@ export default async function ApiUsagePage() {
                   Run refresh now
                 </ActionButton>
               </div>
-              <p className={`mt-4 text-sm leading-6 ${refreshBlocked ? "text-white/80" : lowDailyQuota ? "text-gold" : "text-white/64"}`}>
+              <p className={`mt-4 text-sm leading-6 ${refreshBlocked ? "text-white/80" : lowMonthlyQuota ? "text-gold" : "text-white/64"}`}>
                 {refreshBlocked
-                  ? "Refresh is currently blocked because one of the minute, daily, or monthly limits is exhausted."
-                  : lowDailyQuota
-                    ? `Warning: only ${snapshot.dailyRemaining} daily call${snapshot.dailyRemaining === 1 ? "" : "s"} remain.`
-                    : `Daily headroom looks healthy with ${snapshot.dailyRemaining} calls remaining today.`}
+                  ? "Refresh is currently blocked because the minute or monthly quota is exhausted."
+                  : lowMonthlyQuota
+                    ? `Warning: only ${snapshot.monthlyRemaining} monthly call${snapshot.monthlyRemaining === 1 ? "" : "s"} remain.`
+                    : `Monthly headroom looks healthy with ${snapshot.monthlyRemaining} calls remaining this month.`}
               </p>
             </form>
           </div>
@@ -105,19 +105,13 @@ export default async function ApiUsagePage() {
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <ApiUsageCard
           title="Monthly calls used"
-          value={`${snapshot.monthlyCallsUsed} / ${snapshot.policy.monthlyHardLimit}`}
+          value={`${snapshot.monthlyCallsUsed} / ${snapshot.policy.limitPerMonth}`}
           detail={`${snapshot.monthlyRemaining} calls remain this month.`}
           tone={snapshot.monthlyRemaining < 100 ? "warning" : "default"}
         />
         <ApiUsageCard
-          title="Daily calls used"
-          value={`${snapshot.dailyCallsUsed} / ${snapshot.policy.dailySoftLimit}`}
-          detail={`${snapshot.dailyRemaining} calls remain today.`}
-          tone={lowDailyQuota ? "warning" : "default"}
-        />
-        <ApiUsageCard
           title="Minute calls used"
-          value={`${snapshot.minuteCallsUsed} / ${snapshot.policy.minuteHardLimit}`}
+          value={`${snapshot.minuteCallsUsed} / ${snapshot.policy.limitPerMinute}`}
           detail={`${snapshot.minuteRemaining} calls remain in the current minute window.`}
           tone={snapshot.minuteRemaining <= 1 ? "warning" : "default"}
         />
@@ -148,11 +142,17 @@ export default async function ApiUsagePage() {
           tone="default"
         />
         <ApiUsageCard
+          title="Remaining monthly requests"
+          value={`${snapshot.monthlyRemaining}`}
+          detail={`This is the remaining PricesAPI budget for the rest of the current month.`}
+          tone={snapshot.monthlyRemaining < 100 ? "warning" : "success"}
+        />
+        <ApiUsageCard
           title="Products skipped due to quota"
           value={`${lastRefreshJob?.productsSkippedDueToQuota ?? 0}`}
           detail={
             lastRefreshJob
-              ? `Most recent run left ${lastRefreshJob.remainingDailyCalls} daily and ${lastRefreshJob.remainingMonthlyCalls} monthly calls available.`
+              ? `Most recent run left ${lastRefreshJob.remainingMinuteCalls} minute and ${lastRefreshJob.remainingMonthlyCalls} monthly calls available.`
               : "Quota skips will appear here after the first refresh job."
           }
           tone={(lastRefreshJob?.productsSkippedDueToQuota ?? 0) > 0 ? "warning" : "default"}

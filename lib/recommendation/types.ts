@@ -127,6 +127,8 @@ export interface Product {
   brand: string;
   category: ProductCategory;
   priceUsd: number;
+  estimatedPriceCents?: number;
+  typicalUsedPriceCents?: number;
   shortDescription: string;
   strengths: string[];
   solves: UserProblem[];
@@ -159,6 +161,7 @@ export interface RecommendationInput {
   ports?: string[];
   usedItemsOkay?: boolean;
   availabilityByProductId?: Map<string, AvailabilitySummary> | Record<string, AvailabilitySummary | undefined>;
+  pricingByProductId?: Map<string, RecommendationPriceSnapshot> | Record<string, RecommendationPriceSnapshot | undefined>;
 }
 
 export interface CategoryRecommendation {
@@ -191,6 +194,29 @@ export interface RecommendationExplanation {
 }
 
 export type RecommendationAvailabilityStatus = "available" | "unavailable" | "unknown";
+export type RecommendationPriceStatus = "cached" | "stale" | "catalog_estimate";
+
+export interface RecommendationBestOffer {
+  title: string;
+  brand: string;
+  model: string;
+  retailer: string;
+  available: boolean;
+  priceCents: number;
+  shippingCents?: number | null;
+  totalPriceCents: number;
+  condition: string;
+  url: string;
+  imageUrl?: string;
+  confidence: number;
+}
+
+export interface RecommendationPriceSnapshot {
+  bestOffer: RecommendationBestOffer | null;
+  estimatedMarketPriceCents: number | null;
+  priceStatus: "cached" | "stale";
+  fetchedAt: Date;
+}
 
 export interface ProductRecommendation {
   product: Product;
@@ -216,6 +242,11 @@ export interface ProductRecommendation {
   lastCheckedAt: Date | null;
   availabilityStatus: RecommendationAvailabilityStatus;
   rankingChangedReason: string;
+  bestOffer: RecommendationBestOffer | null;
+  estimatedMarketPriceCents: number | null;
+  priceStatus: RecommendationPriceStatus;
+  fetchedAt: Date | null;
+  priceConfidence: number;
 }
 
 const problemAliases: Record<string, UserProblem> = {

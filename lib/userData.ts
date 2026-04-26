@@ -1,5 +1,6 @@
 import type { SavedProduct, UserProfile as PrismaUserProfile } from "@prisma/client";
 import { getCachedAvailabilitySummaries, type AvailabilityProductModel, type AvailabilitySummary } from "@/lib/availability";
+import { loadCachedRecommendationPriceSnapshots } from "@/lib/availability/priceSnapshots";
 import { db } from "@/lib/db";
 import { getCurrentMongoUser } from "@/lib/devUser";
 import { listInventoryItemsForUser, type MongoInventoryItem } from "@/lib/inventory/mongoInventory";
@@ -13,6 +14,7 @@ import {
   type InventoryItem,
   type PrivateRecommendationProfile,
   type Product,
+  type RecommendationPriceSnapshot,
   type UserProblem,
   type UserProfile,
 } from "@/lib/recommendation/types";
@@ -30,6 +32,7 @@ interface LoadedRecommendationContext {
   deviceType: "desktop" | "laptop" | "tablet" | "unknown";
   privateProfile: PrivateRecommendationProfile | null;
   availabilityByProductId: Map<string, AvailabilitySummary>;
+  pricingByProductId: Map<string, RecommendationPriceSnapshot>;
   candidateProducts: Product[];
 }
 
@@ -193,9 +196,15 @@ async function loadRecommendationContextForProfile(
   const availabilityProductModels: AvailabilityProductModel[] = candidateProducts.map((product) =>
     recommendationProductToAvailabilityModel(product, { allowUsed: activeProfile.usedItemsOkay }),
   );
-  const seededAvailability = await getCachedAvailabilitySummaries(availabilityProductModels);
+  const [seededAvailability, seededPricing] = await Promise.all([
+    getCachedAvailabilitySummaries(availabilityProductModels),
+    loadCachedRecommendationPriceSnapshots(availabilityProductModels),
+  ]);
   const availabilityByProductId = new Map<string, AvailabilitySummary>(
     Object.entries(seededAvailability).map(([productId, summary]) => [canonicalizeProductId(productId), summary]),
+  );
+  const pricingByProductId = new Map<string, RecommendationPriceSnapshot>(
+    Object.entries(seededPricing).map(([productId, pricing]) => [canonicalizeProductId(productId), pricing]),
   );
 
   for (const productId of savedProductIds) {
@@ -216,6 +225,7 @@ async function loadRecommendationContextForProfile(
     deviceType: metadata.deviceType,
     privateProfile,
     availabilityByProductId,
+    pricingByProductId,
     candidateProducts,
   };
 }

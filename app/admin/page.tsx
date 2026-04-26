@@ -94,17 +94,11 @@ function SectionCard({
 export default async function AdminDashboardPage() {
   const data = await buildAdminDashboardData();
   const productNameById = new Map(productCatalog.map((product) => [product.id, product.name]));
-  const limitingRemainingCalls = Math.min(
-    data.quotaSnapshot.monthlyRemaining,
-    data.quotaSnapshot.dailyRemaining,
-    data.quotaSnapshot.minuteRemaining,
-  );
+  const limitingRemainingCalls = Math.min(data.quotaSnapshot.monthlyRemaining, data.quotaSnapshot.minuteRemaining);
   const limitingWindow =
     limitingRemainingCalls === data.quotaSnapshot.minuteRemaining
       ? "minute"
-      : limitingRemainingCalls === data.quotaSnapshot.dailyRemaining
-        ? "day"
-        : "month";
+      : "month";
 
   return (
     <div className="space-y-6">
@@ -196,24 +190,24 @@ export default async function AdminDashboardPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <StatTile
               label="Monthly usage"
-              value={`${data.quotaSnapshot.monthlyCallsUsed} / ${data.quotaSnapshot.policy.monthlyHardLimit}`}
+              value={`${data.quotaSnapshot.monthlyCallsUsed} / ${data.quotaSnapshot.policy.limitPerMonth}`}
               detail={`${data.quotaSnapshot.monthlyRemaining} calls remain this month.`}
               tone={data.quotaSnapshot.monthlyRemaining < 100 ? "warning" : "default"}
             />
             <StatTile
-              label="Daily usage"
-              value={`${data.quotaSnapshot.dailyCallsUsed} / ${data.quotaSnapshot.policy.dailySoftLimit}`}
-              detail={`${data.quotaSnapshot.dailyRemaining} calls remain today.`}
-              tone={data.quotaSnapshot.dailyRemaining < 10 ? "warning" : "default"}
-            />
-            <StatTile
               label="Minute usage"
-              value={`${data.quotaSnapshot.minuteCallsUsed} / ${data.quotaSnapshot.policy.minuteHardLimit}`}
+              value={`${data.quotaSnapshot.minuteCallsUsed} / ${data.quotaSnapshot.policy.limitPerMinute}`}
               detail={`${data.quotaSnapshot.minuteRemaining} calls remain in the current minute window.`}
               tone={data.quotaSnapshot.minuteRemaining <= 1 ? "warning" : "default"}
             />
             <StatTile
-              label="Remaining calls"
+              label="Remaining monthly requests"
+              value={`${data.quotaSnapshot.monthlyRemaining}`}
+              detail="Requests left in the current monthly PricesAPI budget."
+              tone={data.quotaSnapshot.monthlyRemaining < 100 ? "warning" : "success"}
+            />
+            <StatTile
+              label="Current bottleneck"
               value={`${limitingRemainingCalls}`}
               detail={`The ${limitingWindow} window is the current bottleneck. Safe average remaining this month: ${data.quotaMetrics.safeAverageCallsPerDay}/day.`}
               tone={limitingRemainingCalls <= 1 ? "warning" : "success"}
@@ -251,7 +245,7 @@ export default async function AdminDashboardPage() {
               value={`${data.lastRefreshJob?.productsSkippedDueToQuota ?? 0}`}
               detail={
                 data.lastRefreshJob
-                  ? `${data.lastRefreshJob.remainingDailyCalls} daily and ${data.lastRefreshJob.remainingMonthlyCalls} monthly calls remained afterward.`
+                  ? `${data.lastRefreshJob.remainingMinuteCalls} minute and ${data.lastRefreshJob.remainingMonthlyCalls} monthly calls remained afterward.`
                   : "Quota skips appear after the first constrained run."
               }
               tone={(data.lastRefreshJob?.productsSkippedDueToQuota ?? 0) > 0 ? "warning" : "default"}

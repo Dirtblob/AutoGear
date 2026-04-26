@@ -69,6 +69,7 @@ export async function refreshRecommendationExplanation(formData: FormData): Prom
     deviceType: context.deviceType,
     usedItemsOkay: context.usedItemsOkay,
     availabilityByProductId: context.availabilityByProductId,
+    pricingByProductId: context.pricingByProductId,
   };
   const product = context.candidateProducts.find((candidate) => candidate.id === productId);
   const categoryRecommendation = getCategoryRecommendations(recommendationInput).find(

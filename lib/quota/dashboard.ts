@@ -23,7 +23,7 @@ export function buildPricesApiDashboardMetrics(
     averageDailyBurn > 0 ? Math.max(0, Math.ceil(snapshot.monthlyRemaining / averageDailyBurn)) : null;
   const safeAverageCallsPerDay =
     calendarDaysRemaining > 0
-      ? Math.min(snapshot.policy.dailySoftLimit, Math.floor(snapshot.monthlyRemaining / calendarDaysRemaining))
+      ? Math.floor(snapshot.monthlyRemaining / calendarDaysRemaining)
       : snapshot.monthlyRemaining;
 
   return {

@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCachedAvailabilitySummaries } from "@/lib/availability";
+import { maybeAutoRefreshTopRecommendationPrice } from "@/lib/availability/autoRefresh";
+import { loadCachedRecommendationPriceSnapshots } from "@/lib/availability/priceSnapshots";
 import { db } from "@/lib/db";
 import { getCurrentUserContext, type CurrentUserContext } from "@/lib/currentUser";
 import { deviceToInventorySpecs } from "@/lib/devices/deviceInventorySpecs";
@@ -294,16 +296,44 @@ function priorityForScore(score: number): "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
 export async function generateRecommendationsAction(): Promise<void> {
   const context = await requireCurrentUserContext();
   const candidateProducts = await loadMongoRecommendationProducts();
-  const availabilityByProductId = await getCachedAvailabilitySummaries(
-    candidateProducts.map((product) =>
-      recommendationProductToAvailabilityModel(product, { allowUsed: context.profileRecord.usedItemsOkay }),
-    ),
+  const availabilityProductModels = candidateProducts.map((product) =>
+    recommendationProductToAvailabilityModel(product, { allowUsed: context.profileRecord.usedItemsOkay }),
   );
-  const recommendations = rankProductsForInput({
+  const availabilityModelsByProductId = new Map(availabilityProductModels.map((productModel) => [productModel.id, productModel]));
+  let [availabilityByProductId, pricingByProductId] = await Promise.all([
+    getCachedAvailabilitySummaries(availabilityProductModels),
+    loadCachedRecommendationPriceSnapshots(availabilityProductModels),
+  ]);
+  const recommendationInput = {
     ...context.recommendationInput,
     candidateProducts,
     availabilityByProductId,
-  }).slice(0, 8);
+    pricingByProductId,
+  };
+  let recommendations = rankProductsForInput(recommendationInput).slice(0, 8);
+  const refreshedTopPrice = await maybeAutoRefreshTopRecommendationPrice({
+    productModel: availabilityModelsByProductId.get(recommendations[0]?.product.id ?? ""),
+    availabilityByProductId,
+    userId: context.userId,
+  });
+
+  if (refreshedTopPrice) {
+    availabilityByProductId = {
+      ...availabilityByProductId,
+      [refreshedTopPrice.productModelId]: refreshedTopPrice.availabilitySummary,
+    };
+    pricingByProductId = refreshedTopPrice.priceSnapshot
+      ? {
+          ...pricingByProductId,
+          [refreshedTopPrice.productModelId]: refreshedTopPrice.priceSnapshot,
+        }
+      : pricingByProductId;
+    recommendations = rankProductsForInput({
+      ...recommendationInput,
+      availabilityByProductId,
+      pricingByProductId,
+    }).slice(0, 8);
+  }
 
   await saveRecommendationRunLog({
     userId: context.userId,

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCachedAvailabilitySummaries } from "@/lib/availability";
+import { maybeAutoRefreshTopRecommendationPrice } from "@/lib/availability/autoRefresh";
+import { loadCachedRecommendationPriceSnapshots } from "@/lib/availability/priceSnapshots";
 import { getCurrentMongoUser, UnauthorizedMongoUserError } from "@/lib/devUser";
 import { listInventoryItemsForUser, type MongoInventoryItem } from "@/lib/inventory/mongoInventory";
 import {
@@ -11,6 +13,7 @@ import { saveRecommendationRunLog } from "@/lib/recommendation/recommendationLog
 import type {
   InventoryItem,
   PrivateRecommendationProfile,
+  RecommendationInput,
   ProductRecommendation,
   UserProblem,
   UserProfile,
@@ -177,6 +180,11 @@ function serializeRecommendation(recommendation: ProductRecommendation) {
     lastCheckedAt: recommendation.lastCheckedAt?.toISOString() ?? null,
     availabilityStatus: recommendation.availabilityStatus,
     rankingChangedReason: recommendation.rankingChangedReason,
+    bestOffer: recommendation.bestOffer,
+    estimatedMarketPriceCents: recommendation.estimatedMarketPriceCents,
+    priceStatus: recommendation.priceStatus,
+    fetchedAt: recommendation.fetchedAt?.toISOString() ?? null,
+    priceConfidence: recommendation.priceConfidence,
   };
 }
 
@@ -196,10 +204,15 @@ async function generateRecommendationsResponse(): Promise<NextResponse> {
       inventory,
       privateProfile: privateProfileRecord,
     });
-    const availabilityByProductId = await getCachedAvailabilitySummaries(
-      candidateProducts.map((product) => recommendationProductToAvailabilityModel(product, { allowUsed: true })),
+    const availabilityProductModels = candidateProducts.map((product) =>
+      recommendationProductToAvailabilityModel(product, { allowUsed: true }),
     );
-    const recommendations = rankProductsForInput({
+    const availabilityModelsByProductId = new Map(availabilityProductModels.map((productModel) => [productModel.id, productModel]));
+    let [availabilityByProductId, pricingByProductId] = await Promise.all([
+      getCachedAvailabilitySummaries(availabilityProductModels),
+      loadCachedRecommendationPriceSnapshots(availabilityProductModels),
+    ]);
+    const recommendationInput: RecommendationInput = {
       profile,
       inventory,
       candidateProducts,
@@ -211,7 +224,32 @@ async function generateRecommendationsResponse(): Promise<NextResponse> {
       ports: [],
       usedItemsOkay: true,
       availabilityByProductId,
-    }).slice(0, 8);
+      pricingByProductId,
+    };
+    let recommendations = rankProductsForInput(recommendationInput).slice(0, 8);
+    const refreshedTopPrice = await maybeAutoRefreshTopRecommendationPrice({
+      productModel: availabilityModelsByProductId.get(recommendations[0]?.product.id ?? ""),
+      availabilityByProductId,
+      userId: mongoUser.id,
+    });
+
+    if (refreshedTopPrice) {
+      availabilityByProductId = {
+        ...availabilityByProductId,
+        [refreshedTopPrice.productModelId]: refreshedTopPrice.availabilitySummary,
+      };
+      pricingByProductId = refreshedTopPrice.priceSnapshot
+        ? {
+            ...pricingByProductId,
+            [refreshedTopPrice.productModelId]: refreshedTopPrice.priceSnapshot,
+          }
+        : pricingByProductId;
+      recommendations = rankProductsForInput({
+        ...recommendationInput,
+        availabilityByProductId,
+        pricingByProductId,
+      }).slice(0, 8);
+    }
 
     await saveRecommendationRunLog({
       userId: mongoUser._id,

@@ -148,6 +148,11 @@ function recommendation(overrides: Partial<ProductRecommendation> = {}): Product
     confidenceLevel: "medium",
     rankingChangedReason: "Fresh pricing improved the value fit without changing the underlying score weights.",
     ...overrides,
+    bestOffer: overrides.bestOffer ?? null,
+    estimatedMarketPriceCents: overrides.estimatedMarketPriceCents ?? null,
+    priceStatus: overrides.priceStatus ?? "catalog_estimate",
+    fetchedAt: overrides.fetchedAt ?? null,
+    priceConfidence: overrides.priceConfidence ?? 38,
   };
 }
 

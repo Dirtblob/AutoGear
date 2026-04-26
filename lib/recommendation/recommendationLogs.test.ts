@@ -67,6 +67,11 @@ function recommendation(): ProductRecommendation {
     lastCheckedAt: null,
     availabilityStatus: "unknown",
     rankingChangedReason: "Baseline ranking.",
+    bestOffer: null,
+    estimatedMarketPriceCents: null,
+    priceStatus: "catalog_estimate",
+    fetchedAt: null,
+    priceConfidence: 38,
     profileFieldsUsed: [
       "user_private_profiles.handLengthMm",
       "user_private_profiles.palmWidthMm",

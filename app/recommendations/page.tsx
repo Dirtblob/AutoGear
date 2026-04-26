@@ -1,8 +1,9 @@
-import { availabilityDetailMessages, getAvailabilityStatusBadge } from "@/lib/availability/display";
 import Link from "next/link";
 import { DeviceDeltaComparison } from "@/components/DeviceDeltaComparison";
+import { LivePricePanel } from "@/components/LivePricePanel";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { buildLivePriceCardState } from "@/lib/availability/livePrice";
 import { ScoreBreakdownCard } from "@/components/ui/ScoreBreakdownCard";
 import { buildRecommendationNarrationId } from "@/lib/llm/explanationCache";
 import type { RecommendationNarrationSource } from "@/lib/llm/types";
@@ -156,6 +157,7 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
     ports,
     deviceType,
     privateProfile,
+    pricingByProductId,
     candidateProducts,
   } = context;
   const recommendationInput = {
@@ -168,6 +170,7 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
     deviceType,
     usedItemsOkay,
     availabilityByProductId,
+    pricingByProductId,
   };
   const demoPriorityList =
     demoScenarioId === HACKATHON_DEMO_SCENARIO_ID ? buildHackathonDemoPriorityList(recommendationInput) : [];
@@ -566,8 +569,10 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
 
                 <div className="mt-6 grid gap-5 xl:grid-cols-2">
                   {categoryView.products.slice(0, 3).map((productView) => {
-                    const priceStatusBadge = getAvailabilityStatusBadge(productView.availability);
-                    const availabilityMessages = availabilityDetailMessages(productView.availability);
+                    const livePriceState = buildLivePriceCardState(
+                      productView.availability,
+                      Math.round(productView.recommendation.product.priceUsd * 100),
+                    );
                     const narration = narrationByProductId.get(productView.recommendation.product.id);
                     const narrationOutput = narration?.output;
                     const explanationActionLabel =
@@ -591,9 +596,6 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                               <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${availabilityTone(productView.availability.status)}`}>
                                 {productView.availability.label}
                               </span>
-                              <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${priceStatusBadge.className}`}>
-                                {priceStatusBadge.label}
-                              </span>
                             </div>
                             <h4 className="mt-4 font-display text-2xl font-semibold">
                               {productView.recommendation.product.name}
@@ -605,15 +607,16 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                               {productView.recommendation.product.brand} · {categoryLabels[productView.recommendation.product.category]} ·{" "}
                               {formatUsd(productView.recommendation.product.priceUsd)}
                             </p>
-                            {availabilityMessages.length > 0 ? (
-                              <div className="mt-2 space-y-1 text-xs leading-5 text-ink/50">
-                                {availabilityMessages.map((message) => (
-                                  <p key={message}>{message}</p>
-                                ))}
-                              </div>
-                            ) : null}
                           </div>
                           <ScoreBadge score={productView.recommendation.score} />
+                        </div>
+
+                        <div className="mt-5">
+                          <LivePricePanel
+                            deviceCatalogId={productView.recommendation.product.catalogDeviceId ?? productView.recommendation.product.id}
+                            slug={productView.recommendation.product.catalogDeviceId ?? productView.recommendation.product.id}
+                            initialState={livePriceState}
+                          />
                         </div>
 
                         <div className="mt-5 grid gap-3 sm:grid-cols-2">

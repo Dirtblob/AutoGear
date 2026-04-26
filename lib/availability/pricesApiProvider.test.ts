@@ -3,14 +3,70 @@ import { getAvailabilitySummaries } from "./index";
 import { createPricesApiProvider } from "./pricesApiProvider";
 import type { AvailabilityProductModel } from "./types";
 
-const { reservePricesApiCallMock } = vi.hoisted(() => ({
+const { reservePricesApiCallMock, finalizeApiUsageEventMock, findPriceSnapshotMock, writePriceSnapshotMock } = vi.hoisted(() => ({
   reservePricesApiCallMock: vi.fn(),
+  finalizeApiUsageEventMock: vi.fn(),
+  findPriceSnapshotMock: vi.fn(),
+  writePriceSnapshotMock: vi.fn(),
 }));
 
 vi.mock("@/lib/quota/pricesApiQuota", () => ({
-  canUsePricesApi: vi.fn().mockResolvedValue(true),
-  recordPricesApiUsage: vi.fn().mockResolvedValue(undefined),
   reservePricesApiCall: reservePricesApiCallMock,
+  finalizeApiUsageEvent: finalizeApiUsageEventMock,
+}));
+
+vi.mock("./priceSnapshots", () => ({
+  findPriceSnapshot: findPriceSnapshotMock,
+  normalizePriceSnapshotQuery: (query: string) => query.trim().toLowerCase().replace(/\s+/g, " "),
+  priceSnapshotToSearchResponse: (
+    productModel: AvailabilityProductModel,
+    snapshot: {
+      provider: string;
+      offers?: Array<{
+        title: string;
+        brand: string;
+        model: string;
+        retailer: string;
+        available: boolean;
+        priceCents: number;
+        shippingCents?: number | null;
+        totalPriceCents: number;
+        condition: string;
+        url: string;
+        imageUrl?: string;
+        confidence: number;
+      }>;
+      fetchedAt: Date;
+      expiresAt: Date;
+    },
+    options: {
+      refreshSource: "live" | "cached" | "not_configured";
+      refreshSkippedReason?: "free_tier_quota" | "refresh_window" | "cache_only";
+    },
+  ) => ({
+    listings: (snapshot.offers ?? []).map((offer) => ({
+      provider: snapshot.provider,
+      productModelId: productModel.id,
+      title: offer.title,
+      brand: offer.brand,
+      model: offer.model,
+      retailer: offer.retailer,
+      available: offer.available,
+      priceCents: offer.priceCents,
+      shippingCents: offer.shippingCents ?? undefined,
+      totalPriceCents: offer.totalPriceCents,
+      condition: offer.condition,
+      url: offer.url,
+      imageUrl: offer.imageUrl,
+      confidence: offer.confidence,
+      checkedAt: snapshot.fetchedAt,
+    })),
+    checkedAt: snapshot.fetchedAt,
+    refreshSource: options.refreshSource,
+    refreshSkippedReason: options.refreshSkippedReason,
+    isStale: snapshot.expiresAt.getTime() <= Date.now(),
+  }),
+  writePriceSnapshot: writePriceSnapshotMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -154,6 +210,9 @@ function mockPricesApiFetch() {
 afterEach(() => {
   restoreAllEnv();
   reservePricesApiCallMock.mockReset();
+  finalizeApiUsageEventMock.mockReset();
+  findPriceSnapshotMock.mockReset();
+  writePriceSnapshotMock.mockReset();
 });
 
 describe("pricesApiProvider", () => {
@@ -169,7 +228,8 @@ describe("pricesApiProvider", () => {
   });
 
   it("normalizes the PricesAPI search and offers endpoints into availability listings", async () => {
-    reservePricesApiCallMock.mockResolvedValue(true);
+    reservePricesApiCallMock.mockResolvedValueOnce("event-search").mockResolvedValueOnce("event-offers");
+    findPriceSnapshotMock.mockResolvedValue(null);
     const fetchMock = mockPricesApiFetch();
     const provider = createPricesApiProvider({
       apiKey: "test-key",
@@ -177,7 +237,8 @@ describe("pricesApiProvider", () => {
       fetchImpl: fetchMock as typeof fetch,
     });
 
-    const listings = await provider?.search(productModel());
+    const response = await provider?.search(productModel());
+    const listings = response?.listings ?? [];
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -197,6 +258,7 @@ describe("pricesApiProvider", () => {
         headers: expect.objectContaining({ "x-api-key": "test-key" }),
       }),
     );
+    expect(response?.refreshSource).toBe("live");
     expect(listings).toHaveLength(2);
     expect(listings?.[0]).toMatchObject({
       provider: "pricesapi",
@@ -219,10 +281,18 @@ describe("pricesApiProvider", () => {
       totalPriceCents: 28999,
       condition: "open_box",
     });
+    expect(writePriceSnapshotMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        normalizedQuery: "dell s2722qc",
+      }),
+    );
+    expect(finalizeApiUsageEventMock).toHaveBeenCalledWith("event-search", true);
+    expect(finalizeApiUsageEventMock).toHaveBeenCalledWith("event-offers", true);
   });
 
   it("uses old PRICE_API_* env vars as a temporary fallback", async () => {
-    reservePricesApiCallMock.mockResolvedValue(true);
+    reservePricesApiCallMock.mockResolvedValueOnce("event-search").mockResolvedValueOnce("event-offers");
+    findPriceSnapshotMock.mockResolvedValue(null);
     process.env.PRICE_API_BASE_URL = "https://legacy.example.test";
     process.env.PRICE_API_KEY = "legacy-key";
     process.env.PRICE_API_COUNTRY = "ca";
@@ -251,5 +321,82 @@ describe("pricesApiProvider", () => {
       }),
       expect.any(Object),
     );
+  });
+
+  it("returns a fresh cached snapshot without calling PricesAPI", async () => {
+    reservePricesApiCallMock.mockResolvedValue("event");
+    findPriceSnapshotMock.mockResolvedValue({
+      provider: "pricesapi",
+      offers: [
+        {
+          title: "Dell S2722QC 27-inch 4K USB-C Monitor",
+          brand: "Dell",
+          model: "S2722QC",
+          retailer: "Cached Store",
+          available: true,
+          priceCents: 28499,
+          shippingCents: 0,
+          totalPriceCents: 28499,
+          condition: "unknown",
+          url: "https://example.com/cached",
+          imageUrl: "https://example.com/cached.jpg",
+          confidence: 91,
+        },
+      ],
+      fetchedAt: new Date("2026-04-25T12:00:00Z"),
+      expiresAt: new Date("2099-04-25T13:00:00Z"),
+    });
+    const fetchMock = mockPricesApiFetch();
+    const provider = createPricesApiProvider({
+      apiKey: "test-key",
+      baseUrl: "https://api.pricesapi.io",
+      fetchImpl: fetchMock as typeof fetch,
+    });
+
+    const response = await provider?.search(productModel());
+
+    expect(response?.refreshSource).toBe("cached");
+    expect(response?.isStale).toBe(false);
+    expect(response?.listings[0]?.retailer).toBe("Cached Store");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(reservePricesApiCallMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a stale cached snapshot unless refresh is forced", async () => {
+    reservePricesApiCallMock.mockResolvedValue("event");
+    findPriceSnapshotMock.mockResolvedValue({
+      provider: "pricesapi",
+      offers: [
+        {
+          title: "Dell S2722QC 27-inch 4K USB-C Monitor",
+          brand: "Dell",
+          model: "S2722QC",
+          retailer: "Stale Store",
+          available: true,
+          priceCents: 28999,
+          shippingCents: 0,
+          totalPriceCents: 28999,
+          condition: "unknown",
+          url: "https://example.com/stale",
+          imageUrl: "https://example.com/stale.jpg",
+          confidence: 89,
+        },
+      ],
+      fetchedAt: new Date("2026-04-24T12:00:00Z"),
+      expiresAt: new Date("2026-04-24T13:00:00Z"),
+    });
+    const fetchMock = mockPricesApiFetch();
+    const provider = createPricesApiProvider({
+      apiKey: "test-key",
+      baseUrl: "https://api.pricesapi.io",
+      fetchImpl: fetchMock as typeof fetch,
+    });
+
+    const response = await provider?.search(productModel());
+
+    expect(response?.refreshSource).toBe("cached");
+    expect(response?.refreshSkippedReason).toBe("cache_only");
+    expect(response?.isStale).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

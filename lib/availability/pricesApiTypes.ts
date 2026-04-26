@@ -9,7 +9,7 @@ export interface PricesApiSearchRequest {
 }
 
 export interface PricesApiSearchResult {
-  id: string;
+  id: string | number;
   title: string;
   image?: string;
   offerCount?: number;
@@ -38,7 +38,7 @@ export interface PricesApiOffer {
 }
 
 export interface PricesApiOffersProduct {
-  id: string;
+  id: string | number;
   title: string;
   image?: string;
   offerCount?: number;

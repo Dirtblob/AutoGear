@@ -11,6 +11,8 @@
     "verify:private-recommendations": "vitest run lib/recommendation/privateProfileFit.test.ts --reporter verbose",
     "typecheck": "tsc --noEmit",
     "job:refresh-prices": "tsx scripts/run-refresh-prices.ts",
+    "prices:test": "tsx scripts/testPricesApi.ts",
+    "prices:debug": "tsx scripts/debugPricesApiRaw.ts",
     "db:check": "tsx scripts/checkMongoConnection.ts",
     "db:check-devices": "tsx scripts/checkDeviceCatalog.ts",
     "db:backup": "tsx scripts/backupMongoData.ts",

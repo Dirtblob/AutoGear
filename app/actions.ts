@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getCachedAvailabilitySummaries } from "@/lib/availability";
+import { maybeAutoRefreshTopRecommendationPrice } from "@/lib/availability/autoRefresh";
+import { loadCachedRecommendationPriceSnapshots } from "@/lib/availability/priceSnapshots";
 import { getCurrentMongoUser } from "@/lib/devUser";
 import { replaceDevInventoryItems } from "@/lib/inventory/mongoInventory";
 import { loadMongoRecommendationProducts, recommendationProductToAvailabilityModel } from "@/lib/recommendation/mongoDeviceProducts";
@@ -32,19 +34,48 @@ function priorityForScore(score: number): "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
 export async function runLaptopOnlyStudentDemoAction(): Promise<void> {
   const profileData = serializeHackathonDemoProfile();
   const candidateProducts = await loadMongoRecommendationProducts();
-  const availabilityByProductId = await getCachedAvailabilitySummaries(
-    candidateProducts.map((product) => recommendationProductToAvailabilityModel(product, { allowUsed: true })),
+  const availabilityProductModels = candidateProducts.map((product) =>
+    recommendationProductToAvailabilityModel(product, { allowUsed: true }),
   );
+  const availabilityModelsByProductId = new Map(availabilityProductModels.map((productModel) => [productModel.id, productModel]));
+  let [availabilityByProductId, pricingByProductId] = await Promise.all([
+    getCachedAvailabilitySummaries(availabilityProductModels),
+    loadCachedRecommendationPriceSnapshots(availabilityProductModels),
+  ]);
   const recommendationInput = {
     ...buildHackathonDemoRecommendationInput(),
     candidateProducts,
     availabilityByProductId,
+    pricingByProductId,
   };
-  const recommendations = rankProductsForInput(recommendationInput).slice(0, 8);
   const [mongoUser, privateProfile] = await Promise.all([
     getCurrentMongoUser(),
     getCurrentUserPrivateProfile(),
   ]);
+  let recommendations = rankProductsForInput(recommendationInput).slice(0, 8);
+  const refreshedTopPrice = await maybeAutoRefreshTopRecommendationPrice({
+    productModel: availabilityModelsByProductId.get(recommendations[0]?.product.id ?? ""),
+    availabilityByProductId,
+    userId: mongoUser.id,
+  });
+
+  if (refreshedTopPrice) {
+    availabilityByProductId = {
+      ...availabilityByProductId,
+      [refreshedTopPrice.productModelId]: refreshedTopPrice.availabilitySummary,
+    };
+    pricingByProductId = refreshedTopPrice.priceSnapshot
+      ? {
+          ...pricingByProductId,
+          [refreshedTopPrice.productModelId]: refreshedTopPrice.priceSnapshot,
+        }
+      : pricingByProductId;
+    recommendations = rankProductsForInput({
+      ...recommendationInput,
+      availabilityByProductId,
+      pricingByProductId,
+    }).slice(0, 8);
+  }
   const watchedRecommendation =
     recommendations.find((recommendation) => recommendation.product.id === DEMO_WATCHED_PRODUCT_ID) ??
     recommendations.find((recommendation) => recommendation.product.category === "laptop_stand") ??

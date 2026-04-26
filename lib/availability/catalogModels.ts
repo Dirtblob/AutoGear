@@ -12,6 +12,8 @@ export function catalogProductToAvailabilityModel(product: ProductCatalogItem): 
     gtin: product.gtin,
     upc: product.upc,
     searchQueries: product.searchQueries,
+    deviceCatalogId: product.id,
+    slug: product.id,
   };
 }
 

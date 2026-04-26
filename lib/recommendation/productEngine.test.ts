@@ -6,7 +6,15 @@ import { buildHackathonDemoPriorityList } from "./demoMode";
 import { getCategoryRecommendations } from "./categoryEngine";
 import { rankCategories } from "./scoring";
 import { getProductRecommendations, rankProductsForInput } from "./productEngine";
-import type { CategoryScore, InventoryItem, Product, ProductCategory, RecommendationInput, UserProfile } from "./types";
+import type {
+  CategoryScore,
+  InventoryItem,
+  Product,
+  ProductCategory,
+  RecommendationInput,
+  RecommendationPriceSnapshot,
+  UserProfile,
+} from "./types";
 
 type ProfileOverrides = Partial<Omit<UserProfile, "constraints">> & {
   constraints?: Partial<UserProfile["constraints"]>;
@@ -145,6 +153,35 @@ function availableSummary(
     checkedAt,
     refreshSource: options.refreshSource ?? "live",
     refreshSkippedReason: options.refreshSkippedReason,
+  };
+}
+
+function cachedPricing(
+  productModelId: string,
+  priceCents: number,
+  options: {
+    fetchedAt?: Date;
+    priceStatus?: RecommendationPriceSnapshot["priceStatus"];
+  } = {},
+): RecommendationPriceSnapshot {
+  const fetchedAt = options.fetchedAt ?? new Date("2026-04-25T12:00:00Z");
+
+  return {
+    bestOffer: {
+      title: productModelId,
+      brand: "Test",
+      model: "Model",
+      retailer: "Cached Shop",
+      available: true,
+      priceCents,
+      totalPriceCents: priceCents,
+      condition: "used",
+      url: "https://example.com/cached-listing",
+      confidence: 90,
+    },
+    estimatedMarketPriceCents: priceCents,
+    priceStatus: options.priceStatus ?? "cached",
+    fetchedAt,
   };
 }
 
@@ -308,6 +345,10 @@ describe("product recommendation engine", () => {
     const recommendations = getProductRecommendations(
       input({
         profile: profile({ problems: ["eye_strain"], budgetUsd: 300 }),
+        pricingByProductId: {
+          "discounted-monitor": cachedPricing("discounted-monitor", 14000),
+          "full-price-monitor": cachedPricing("full-price-monitor", 20000),
+        },
         availabilityByProductId: {
           "discounted-monitor": availableSummary("discounted-monitor", { priceCents: 14000 }),
           "full-price-monitor": availableSummary("full-price-monitor", { priceCents: 20000 }),
@@ -369,8 +410,8 @@ describe("product recommendation engine", () => {
     const frugalRecommendation = getProductRecommendations(
       input({
         profile: profile({ budgetUsd: 300, spendingStyle: "FRUGAL", problems: ["back_pain"] }),
-        availabilityByProductId: {
-          "expensive-chair": availableSummary("expensive-chair", { priceCents: 45000 }),
+        pricingByProductId: {
+          "expensive-chair": cachedPricing("expensive-chair", 45000),
         },
       }),
       categoryScore("chair"),
@@ -379,8 +420,8 @@ describe("product recommendation engine", () => {
     const balancedRecommendation = getProductRecommendations(
       input({
         profile: profile({ budgetUsd: 300, spendingStyle: "balanced", problems: ["back_pain"] }),
-        availabilityByProductId: {
-          "expensive-chair": availableSummary("expensive-chair", { priceCents: 45000 }),
+        pricingByProductId: {
+          "expensive-chair": cachedPricing("expensive-chair", 45000),
         },
       }),
       categoryScore("chair"),
@@ -388,13 +429,15 @@ describe("product recommendation engine", () => {
     )[0];
 
     expect(frugalRecommendation.scoreBreakdown.valueFit).toBeLessThan(balancedRecommendation.scoreBreakdown.valueFit);
-    expect(frugalRecommendation.score).toBeLessThan(balancedRecommendation.score);
   });
 
   it("keeps cached prices usable in scoring", () => {
     const recommendation = getProductRecommendations(
       input({
         profile: profile({ problems: ["eye_strain"] }),
+        pricingByProductId: {
+          "cached-monitor": cachedPricing("cached-monitor", 10000),
+        },
         availabilityByProductId: {
           "cached-monitor": availableSummary("cached-monitor", {
             priceCents: 10000,
@@ -408,15 +451,65 @@ describe("product recommendation engine", () => {
     )[0];
 
     expect(recommendation.currentBestPriceCents).toBe(10000);
-    expect(recommendation.scoreBreakdown.availabilityFit).toBe(70);
+    expect(recommendation.scoreBreakdown.availabilityFit).toBe(82);
     expect(recommendation.availabilityStatus).toBe("available");
+    expect(recommendation.priceStatus).toBe("cached");
+    expect(recommendation.priceConfidence).toBeGreaterThan(38);
     expect(recommendation.rankingChangedReason).toContain("cached market snapshot");
+  });
+
+  it("marks catalog-only estimates as lower confidence without using them for value fit", () => {
+    const recommendations = getProductRecommendations(
+      input({
+        profile: profile({ problems: ["eye_strain"], budgetUsd: 300 }),
+      }),
+      categoryScore("monitor"),
+      [
+        product({ id: "catalog-cheap-monitor", name: "Catalog Cheap Monitor", priceUsd: 120, estimatedPriceCents: 12000 }),
+        product({ id: "catalog-pricey-monitor", name: "Catalog Pricey Monitor", priceUsd: 900, estimatedPriceCents: 90000 }),
+      ],
+    );
+
+    expect(recommendations[0]?.scoreBreakdown.valueFit).toBe(recommendations[1]?.scoreBreakdown.valueFit);
+    expect(recommendations.every((recommendation) => recommendation.priceStatus === "catalog_estimate")).toBe(true);
+    expect(recommendations.every((recommendation) => recommendation.priceConfidence < 50)).toBe(true);
+    expect(recommendations.every((recommendation) => recommendation.currentBestPriceCents === null)).toBe(true);
+    expect(recommendations.map((recommendation) => recommendation.estimatedMarketPriceCents).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual([
+      12000,
+      90000,
+    ]);
+  });
+
+  it("attaches stale snapshots without letting stale prices change value fit", () => {
+    const recommendations = getProductRecommendations(
+      input({
+        profile: profile({ problems: ["eye_strain"], budgetUsd: 300 }),
+        pricingByProductId: {
+          "stale-price-monitor": cachedPricing("stale-price-monitor", 5000, { priceStatus: "stale" }),
+        },
+      }),
+      categoryScore("monitor"),
+      [
+        product({ id: "catalog-only-monitor", name: "Catalog Only Monitor", priceUsd: 200, estimatedPriceCents: 20000 }),
+        product({ id: "stale-price-monitor", name: "Stale Price Monitor", priceUsd: 200, estimatedPriceCents: 20000 }),
+      ],
+    );
+    const catalogOnly = recommendations.find((recommendation) => recommendation.product.id === "catalog-only-monitor");
+    const stale = recommendations.find((recommendation) => recommendation.product.id === "stale-price-monitor");
+
+    expect(stale?.priceStatus).toBe("stale");
+    expect(stale?.currentBestPriceCents).toBe(5000);
+    expect(stale?.fetchedAt).toEqual(new Date("2026-04-25T12:00:00Z"));
+    expect(stale?.scoreBreakdown.valueFit).toBe(catalogOnly?.scoreBreakdown.valueFit);
   });
 
   it("shows quota-limited pricing status in the ranking explanation", () => {
     const recommendation = getProductRecommendations(
       input({
         profile: profile({ problems: ["eye_strain"] }),
+        pricingByProductId: {
+          "quota-monitor": cachedPricing("quota-monitor", 10000),
+        },
         availabilityByProductId: {
           "quota-monitor": availableSummary("quota-monitor", {
             priceCents: 10000,

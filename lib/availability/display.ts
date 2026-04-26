@@ -54,6 +54,10 @@ export function availabilityDetailMessages(
     messages.push("Cached price from PricesAPI");
   }
 
+  if (summary.isStale) {
+    messages.push("Price snapshot is stale");
+  }
+
   const lastCheckedDistance = formatLastCheckedDistance(summary.checkedAt, currentDate);
   const lastCheckedTimestamp = formatLastCheckedTimestamp(summary.checkedAt);
   if (lastCheckedDistance && lastCheckedTimestamp) {

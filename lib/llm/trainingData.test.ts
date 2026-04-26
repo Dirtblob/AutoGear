@@ -122,6 +122,11 @@ const recommendation: ProductRecommendation = {
   missingDeviceSpecs: [],
   confidenceLevel: "medium",
   rankingChangedReason: "No live availability data yet.",
+  bestOffer: null,
+  estimatedMarketPriceCents: null,
+  priceStatus: "catalog_estimate",
+  fetchedAt: null,
+  priceConfidence: 38,
 };
 
 describe("trainingData", () => {

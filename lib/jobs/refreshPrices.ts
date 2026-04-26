@@ -65,7 +65,7 @@ function withCachedSkipReason(
 
 export async function refreshPrices(
   products = productCatalog,
-  options: { persistSnapshots?: boolean } = { persistSnapshots: true },
+  options: { persistSnapshots?: boolean; forceRefresh?: boolean } = { persistSnapshots: true, forceRefresh: true },
 ): Promise<JobRunSummary> {
   const models = products.map(catalogToAvailabilityModel);
   const currentDate = new Date();
@@ -77,7 +77,7 @@ export async function refreshPrices(
   const refreshProductIds = await selectProductsForRefresh({
     currentDate,
     remainingQuota: {
-      dailyRemaining: initialQuota.dailyRemaining,
+      dailyRemaining: initialQuota.monthlyRemaining,
       monthlyRemaining: initialQuota.monthlyRemaining,
     },
     provider: providerName,
@@ -106,11 +106,7 @@ export async function refreshPrices(
 
     if (usesPricesApi) {
       const quotaBeforeCall = await getPricesApiUsageSnapshot(providerName, new Date());
-      if (
-        quotaBeforeCall.monthlyRemaining <= 0 ||
-        quotaBeforeCall.dailyRemaining <= 0 ||
-        quotaBeforeCall.minuteRemaining <= 0
-      ) {
+      if (quotaBeforeCall.monthlyRemaining <= 0 || quotaBeforeCall.minuteRemaining <= 0) {
         const remainingProductIds = refreshProductIds.slice(index);
         productsSkippedDueToQuota = remainingProductIds.length;
 
@@ -126,6 +122,7 @@ export async function refreshPrices(
 
     const liveSummaries = await getAvailabilitySummaries([model], {
       persistSnapshots: options.persistSnapshots,
+      forceRefresh: options.forceRefresh,
       refreshProductIds: [model.id],
     });
 
@@ -153,7 +150,7 @@ export async function refreshPrices(
       apiCallsUsed,
       pricesApiCallsUsed,
       remainingMonthlyCalls: finalQuota.monthlyRemaining,
-      remainingDailyCalls: finalQuota.dailyRemaining,
+      remainingDailyCalls: finalQuota.monthlyRemaining,
       remainingMinuteCalls: finalQuota.minuteRemaining,
     },
   });
@@ -165,7 +162,7 @@ export async function refreshPrices(
     apiCallsUsed,
     pricesApiCallsUsed,
     remainingMonthlyCalls: finalQuota.monthlyRemaining,
-    remainingDailyCalls: finalQuota.dailyRemaining,
+    remainingDailyCalls: finalQuota.monthlyRemaining,
     remainingMinuteCalls: finalQuota.minuteRemaining,
     availableCount,
     summaries: finalSummaries,

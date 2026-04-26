@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { canUsePricesApi } from "@/lib/quota/pricesApiQuota";
+import { isFreshPriceCheck } from "./cachePolicy";
 import { mockAvailabilityProvider } from "./mockProvider";
 import { compareAvailabilityResults } from "./offerMatcher";
 import { getPricesApiProvider, getPricesApiProviderName, isPricesApiQuotaLimitedError } from "./pricesApiProvider";
@@ -22,6 +22,7 @@ interface GetAvailabilitySummariesOptions {
   persistSnapshots?: boolean;
   provider?: AvailabilityProvider | null;
   manualRefresh?: boolean;
+  forceRefresh?: boolean;
   refreshProductIds?: string[];
 }
 
@@ -43,7 +44,9 @@ interface CachedSnapshot {
   checkedAt: Date;
 }
 
-function getConfiguredProvider(options: Pick<GetAvailabilitySummariesOptions, "manualRefresh"> = {}): AvailabilityProvider | null {
+function getConfiguredProvider(
+  options: Pick<GetAvailabilitySummariesOptions, "manualRefresh" | "forceRefresh"> = {},
+): AvailabilityProvider | null {
   const configuredProvider = process.env.AVAILABILITY_PROVIDER?.toLowerCase() ?? "mock";
   const pricesApiProviderName = getPricesApiProviderName();
 
@@ -52,7 +55,10 @@ function getConfiguredProvider(options: Pick<GetAvailabilitySummariesOptions, "m
   }
 
   if (configuredProvider === pricesApiProviderName || configuredProvider === "pricesapi" || configuredProvider === "priceapi") {
-    return getPricesApiProvider({ manualRefresh: options.manualRefresh }) ?? mockAvailabilityProvider;
+    return getPricesApiProvider({
+      manualRefresh: options.manualRefresh,
+      forceRefresh: options.forceRefresh,
+    }) ?? mockAvailabilityProvider;
   }
 
   return availabilityProviders[configuredProvider] ?? null;
@@ -74,6 +80,7 @@ function buildCheckingSummary(
     checkedAt: null,
     refreshSource: options.refreshSource,
     refreshSkippedReason: options.refreshSkippedReason,
+    isStale: false,
   };
 }
 
@@ -101,6 +108,7 @@ function summarizeResults(
     checkedAt,
     refreshSource: options.refreshSource,
     refreshSkippedReason: options.refreshSkippedReason,
+    isStale: false,
   };
 }
 
@@ -143,6 +151,7 @@ function mapSnapshotsToSummary(
     checkedAt: latestSnapshot.checkedAt,
     refreshSource: options.refreshSource,
     refreshSkippedReason: options.refreshSkippedReason,
+    isStale: !isFreshPriceCheck(latestSnapshot.checkedAt),
   };
 }
 
@@ -324,7 +333,7 @@ export async function getAvailabilitySummaries(
 ): Promise<Record<string, AvailabilitySummary>> {
   const provider = Object.prototype.hasOwnProperty.call(options, "provider")
     ? options.provider ?? null
-    : getConfiguredProvider({ manualRefresh: options.manualRefresh });
+    : getConfiguredProvider({ manualRefresh: options.manualRefresh, forceRefresh: options.forceRefresh });
   const cachedSummaries = await getCachedAvailabilitySummaries(productModels, { provider: provider ?? undefined });
   const refreshProductIds = new Set(options.refreshProductIds ?? productModels.map((productModel) => productModel.id));
 
@@ -349,30 +358,21 @@ export async function getAvailabilitySummaries(
       ] as const;
     }
 
-    if (isPricesApiProvider) {
-      const canRefresh = await canUsePricesApi(provider.name, {
-        now: new Date(),
-        manualRefresh: options.manualRefresh,
-      });
-
-      if (!canRefresh) {
-        return [
-          productModel.id,
-          cachedOrCheckingSummary(productModel.id, cachedSummary, "free_tier_quota"),
-        ] as const;
-      }
-    }
-
     try {
       const startedAt = new Date();
-      const listings = await provider.search(productModel);
-      const checkedAt = listings[0]?.checkedAt ?? startedAt;
+      const response = await provider.search(productModel);
+      const listings = response.listings;
+      const checkedAt = response.checkedAt ?? listings[0]?.checkedAt ?? startedAt;
 
       return [
         productModel.id,
-        summarizeResults(productModel.id, provider.name, listings, checkedAt, {
-          refreshSource: "live",
-        }),
+        {
+          ...summarizeResults(productModel.id, provider.name, listings, checkedAt, {
+            refreshSource: response.refreshSource,
+            refreshSkippedReason: response.refreshSkippedReason,
+          }),
+          isStale: response.isStale ?? false,
+        },
       ] as const;
     } catch (error) {
       if (isPricesApiQuotaLimitedError(error)) {

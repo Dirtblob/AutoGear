@@ -108,35 +108,31 @@ describe("refreshPrices", () => {
     });
     getPricesApiUsageSnapshotMock
       .mockResolvedValueOnce({
+        policy: { provider: "pricesapi", limitPerMinute: 10, limitPerMonth: 1000 },
         monthlyCallsUsed: 10,
-        dailyCallsUsed: 5,
         minuteCallsUsed: 2,
         monthlyRemaining: 940,
-        dailyRemaining: 25,
         minuteRemaining: 6,
       })
       .mockResolvedValueOnce({
+        policy: { provider: "pricesapi", limitPerMinute: 10, limitPerMonth: 1000 },
         monthlyCallsUsed: 10,
-        dailyCallsUsed: 5,
         minuteCallsUsed: 2,
         monthlyRemaining: 940,
-        dailyRemaining: 25,
         minuteRemaining: 1,
       })
       .mockResolvedValueOnce({
+        policy: { provider: "pricesapi", limitPerMinute: 10, limitPerMonth: 1000 },
         monthlyCallsUsed: 11,
-        dailyCallsUsed: 6,
-        minuteCallsUsed: 8,
+        minuteCallsUsed: 10,
         monthlyRemaining: 939,
-        dailyRemaining: 24,
         minuteRemaining: 0,
       })
       .mockResolvedValueOnce({
+        policy: { provider: "pricesapi", limitPerMinute: 10, limitPerMonth: 1000 },
         monthlyCallsUsed: 11,
-        dailyCallsUsed: 6,
-        minuteCallsUsed: 8,
+        minuteCallsUsed: 10,
         monthlyRemaining: 939,
-        dailyRemaining: 24,
         minuteRemaining: 0,
       });
     getAvailabilitySummariesMock.mockResolvedValue({
@@ -168,7 +164,7 @@ describe("refreshPrices", () => {
     expect(result.apiCallsUsed).toBe(1);
     expect(result.pricesApiCallsUsed).toBe(1);
     expect(result.remainingMonthlyCalls).toBe(939);
-    expect(result.remainingDailyCalls).toBe(24);
+    expect(result.remainingDailyCalls).toBe(939);
     expect(result.remainingMinuteCalls).toBe(0);
     expect(result.alertsCreated).toBe(2);
     expect(result.summaries["monitor-lg-34wp65c-b"]?.refreshSkippedReason).toBe("free_tier_quota");
@@ -180,7 +176,7 @@ describe("refreshPrices", () => {
         apiCallsUsed: 1,
         pricesApiCallsUsed: 1,
         remainingMonthlyCalls: 939,
-        remainingDailyCalls: 24,
+        remainingDailyCalls: 939,
         remainingMinuteCalls: 0,
       }),
     });

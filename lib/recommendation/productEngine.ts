@@ -8,6 +8,7 @@ import type {
   Product,
   ProductCategory,
   ProductRecommendation,
+  RecommendationPriceSnapshot,
   RecommendationInput,
   ScoreBreakdown,
   UserProblem,
@@ -50,7 +51,10 @@ function productPriceUsd(product: Product): number {
 }
 
 function productExpectedPriceCents(product: Product): number {
-  return Math.max(1, Math.round(product.priceUsd * 100));
+  return Math.max(
+    1,
+    Math.round(product.estimatedPriceCents ?? product.typicalUsedPriceCents ?? product.priceUsd * 100),
+  );
 }
 
 function requiredDeskWidth(product: Product): number | undefined {
@@ -78,13 +82,30 @@ function getAvailabilitySummary(
   return availabilityByProductId[productId];
 }
 
-function getCurrentBestPriceCents(summary: AvailabilitySummary | undefined): number | null {
-  return summary?.bestListing?.totalPriceCents ?? summary?.bestListing?.priceCents ?? null;
+function getRecommendationPricing(
+  pricingByProductId: RecommendationInput["pricingByProductId"],
+  productId: string,
+): RecommendationPriceSnapshot | undefined {
+  if (!pricingByProductId) return undefined;
+
+  if (pricingByProductId instanceof Map) {
+    return pricingByProductId.get(productId);
+  }
+
+  return pricingByProductId[productId];
 }
 
-function availabilityStatus(summary: AvailabilitySummary | undefined): ProductRecommendation["availabilityStatus"] {
+function cachedPricingCents(pricing: RecommendationPriceSnapshot | undefined): number | null {
+  return pricing?.bestOffer?.totalPriceCents ?? pricing?.bestOffer?.priceCents ?? pricing?.estimatedMarketPriceCents ?? null;
+}
+
+function availabilityStatus(
+  summary: AvailabilitySummary | undefined,
+  pricing: RecommendationPriceSnapshot | undefined,
+): ProductRecommendation["availabilityStatus"] {
   if (summary?.status === "available") return "available";
   if (summary?.status === "unavailable") return "unavailable";
+  if (pricing?.bestOffer?.available) return "available";
   return "unknown";
 }
 
@@ -105,8 +126,27 @@ function scoreAvailabilityFit(summary: AvailabilitySummary | undefined, currentD
   return isRecentSnapshot(summary, currentDate) ? 100 : 70;
 }
 
-function effectivePriceCents(product: Product, summary: AvailabilitySummary | undefined): number {
-  return getCurrentBestPriceCents(summary) ?? productExpectedPriceCents(product);
+function scoreAvailabilityFitWithPricing(
+  summary: AvailabilitySummary | undefined,
+  pricing: RecommendationPriceSnapshot | undefined,
+  currentDate: Date = new Date(),
+): number {
+  const summaryScore = scoreAvailabilityFit(summary, currentDate);
+  if (!pricing) return summaryScore;
+  if (pricing.priceStatus === "cached") return Math.max(summaryScore, 82);
+  return Math.max(summaryScore, 62);
+}
+
+function effectivePriceCents(product: Product, pricing: RecommendationPriceSnapshot | undefined): number {
+  return cachedPricingCents(pricing) ?? productExpectedPriceCents(product);
+}
+
+function priceConfidence(pricing: RecommendationPriceSnapshot | undefined): number {
+  if (!pricing) return 38;
+
+  const offerConfidence = pricing.bestOffer?.confidence;
+  const base = pricing.priceStatus === "cached" ? 84 : 58;
+  return clampScore(offerConfidence === undefined ? base : base * 0.55 + offerConfidence * 0.45);
 }
 
 export function getProductRecommendations(
@@ -142,7 +182,8 @@ function buildRecommendation(
   productCatalog: Product[],
 ): ProductRecommendation {
   const summary = getAvailabilitySummary(input.availabilityByProductId, product.id);
-  const currentBestPriceCents = getCurrentBestPriceCents(summary);
+  const pricing = getRecommendationPricing(input.pricingByProductId, product.id);
+  const currentBestPriceCents = cachedPricingCents(pricing);
   const expectedPriceCents = productExpectedPriceCents(product);
   const deviceDelta = computeDeviceDelta(findCurrentDeviceForProduct(product, input.inventory), product, input.profile);
   let problemFit = scoreProblemFit(product, input.profile, input.inventory, categoryRecommendation, deviceDelta);
@@ -157,9 +198,9 @@ function buildRecommendation(
     product.category === "laptop" &&
     !input.profile.problems.includes("slow_computer") &&
     cheaperAccessoriesSolveMainIssue(product, input, productCatalog);
-  let valueFit = scoreValueFit(product, input.profile, categoryRecommendation, problemFit, summary);
+  let valueFit = scoreValueFit(product, input.profile, categoryRecommendation, problemFit, pricing);
   let compatibilityFit = scoreCompatibilityFit(product, input);
-  const availabilityFit = scoreAvailabilityFit(summary);
+  const availabilityFit = scoreAvailabilityFitWithPricing(summary, pricing);
   const confidence = clampScore(
     scoreConfidence(product, input, ergonomicFit.missingDeviceSpecs) * 0.65 + deviceDelta.confidence * 0.35,
   );
@@ -217,20 +258,25 @@ function buildRecommendation(
     scoreBreakdown,
     deviceDelta,
     fit: scoreToFit(finalScore),
-    reasons: buildReasons(product, input, categoryRecommendation, scoreBreakdown, productCatalog, summary, deviceDelta, ergonomicFit.reasons),
+    reasons: buildReasons(product, input, categoryRecommendation, scoreBreakdown, productCatalog, pricing, summary, deviceDelta, ergonomicFit.reasons),
     explanation: explainProductRecommendation(product, input.profile, categoryRecommendation, input.inventory, finalScore),
     tradeoffs: buildTradeoffs(product, input),
     whyNotCheaper: explainCheaperAlternative(product, input, categoryRecommendation, productCatalog),
     whyNotMoreExpensive: explainMoreExpensiveAlternative(product, input, categoryRecommendation, productCatalog),
-    isAspirational: effectivePriceCents(product, summary) > input.profile.budgetUsd * 100,
+    isAspirational: effectivePriceCents(product, pricing) > input.profile.budgetUsd * 100,
     profileFieldsUsed: ergonomicFit.profileFieldsUsed,
     missingDeviceSpecs: ergonomicFit.missingDeviceSpecs,
     confidenceLevel: confidenceLevelForScore(confidence),
     currentBestPriceCents,
     priceDeltaFromExpected: currentBestPriceCents === null ? null : currentBestPriceCents - expectedPriceCents,
-    lastCheckedAt: summary?.checkedAt ?? null,
-    availabilityStatus: availabilityStatus(summary),
-    rankingChangedReason: buildRankingChangedReason(product, input.profile, summary),
+    lastCheckedAt: pricing?.fetchedAt ?? summary?.checkedAt ?? null,
+    availabilityStatus: availabilityStatus(summary, pricing),
+    rankingChangedReason: buildRankingChangedReason(product, input.profile, pricing, summary),
+    bestOffer: pricing?.bestOffer ?? null,
+    estimatedMarketPriceCents: pricing?.estimatedMarketPriceCents ?? (pricing ? null : expectedPriceCents),
+    priceStatus: pricing?.priceStatus ?? "catalog_estimate",
+    fetchedAt: pricing?.fetchedAt ?? null,
+    priceConfidence: priceConfidence(pricing),
   };
 }
 
@@ -314,7 +360,7 @@ function scoreValueFit(
   profile: UserProfile,
   categoryRecommendation: CategoryScore,
   problemFit: number,
-  summary: AvailabilitySummary | undefined,
+  pricing: RecommendationPriceSnapshot | undefined,
 ): number {
   const expectedImpact =
     problemFit * 0.42 +
@@ -322,17 +368,27 @@ function scoreValueFit(
     hintScore(product.scoreHints.comfort) * 0.1 +
     hintScore(product.scoreHints.productivity) * 0.12 +
     hintScore(product.scoreHints.accessibility) * 0.08;
-  const currentPriceCents = effectivePriceCents(product, summary);
-  const expectedPriceCents = productExpectedPriceCents(product);
-  const budgetCents = Math.max(profile.budgetUsd * 100, 1);
-  const priceDeltaRatio = (expectedPriceCents - currentPriceCents) / expectedPriceCents;
-  const budgetRatio = currentPriceCents / budgetCents;
   const qualityScore = clampScore(
     hintScore(product.scoreHints.comfort) * 0.28 +
       hintScore(product.scoreHints.productivity) * 0.42 +
       hintScore(product.scoreHints.accessibility) * 0.18 +
       hintScore(product.scoreHints.value) * 0.12,
   );
+
+  // Stale and catalog-only prices are displayed, but not trusted enough to move valueFit.
+  if (!pricing || pricing.priceStatus === "stale") {
+    return clampScore(
+      expectedImpact * 0.52 +
+        hintScore(product.scoreHints.value) * 0.24 +
+        qualityScore * 0.24,
+    );
+  }
+
+  const currentPriceCents = effectivePriceCents(product, pricing);
+  const expectedPriceCents = productExpectedPriceCents(product);
+  const budgetCents = Math.max(profile.budgetUsd * 100, 1);
+  const priceDeltaRatio = (expectedPriceCents - currentPriceCents) / expectedPriceCents;
+  const budgetRatio = currentPriceCents / budgetCents;
   let marketPriceScore = 62 + priceDeltaRatio * 55;
 
   if (budgetRatio <= 0.6) marketPriceScore += 8;
@@ -402,13 +458,14 @@ function buildReasons(
   categoryRecommendation: CategoryScore,
   breakdown: ScoreBreakdown,
   productCatalog: Product[],
+  pricing: RecommendationPriceSnapshot | undefined,
   summary: AvailabilitySummary | undefined,
   deviceDelta?: DeviceDelta,
   fitReasons: string[] = [],
 ): string[] {
   const solvedProblems = input.profile.problems.filter((problem) => product.solves.includes(problem));
   const reasons = [...categoryRecommendation.reasons];
-  const displayedPriceUsd = Math.round(effectivePriceCents(product, summary) / 100);
+  const displayedPriceUsd = Math.round(effectivePriceCents(product, pricing) / 100);
 
   if (solvedProblems.length > 0) {
     reasons.push(`${product.name} directly targets ${formatProblemList(solvedProblems)}.`);
@@ -429,11 +486,21 @@ function buildReasons(
   reasons.push(...fitReasons);
 
   if (displayedPriceUsd > input.profile.budgetUsd) {
-    reasons.push("Current listings run above budget, so this is a stretch option right now.");
+    reasons.push(
+      pricing
+        ? "Current listings run above budget, so this is a stretch option right now."
+        : "Catalog estimate is above budget, so this is a stretch option right now.",
+    );
   }
 
   if (summary?.refreshSkippedReason === "free_tier_quota") {
     reasons.push("Price is using cached data because the free-tier quota was reached.");
+  }
+
+  if (!pricing) {
+    reasons.push("Price confidence is lower because only the catalog estimate is available.");
+  } else if (pricing.priceStatus === "stale") {
+    reasons.push("Price is based on a stale cached market snapshot.");
   }
 
   if (product.category === "laptop" && cheaperAccessoriesSolveMainIssue(product, input, productCatalog)) {
@@ -462,21 +529,31 @@ function buildTradeoffs(product: Product, input: RecommendationInput): string[] 
 function buildRankingChangedReason(
   product: Product,
   profile: UserProfile,
+  pricing: RecommendationPriceSnapshot | undefined,
   summary: AvailabilitySummary | undefined,
 ): string {
+  const currentPriceCents = cachedPricingCents(pricing);
+
+  if (summary?.status === "unavailable") {
+    return `This ${product.category.replaceAll("_", " ")} moved down because it is currently unavailable.`;
+  }
+
+  if (!pricing) {
+    return `${product.name} is using the catalog estimate because no cached market snapshot is available.`;
+  }
+
+  if (pricing.priceStatus === "stale") {
+    return `${product.name} is using a stale cached market snapshot until pricing is refreshed manually.`;
+  }
+
   if (!summary || summary.status === "checking_not_configured") {
-    return `${product.name} is using the catalog price because current availability is unknown.`;
+    return `${product.name} is using cached market pricing; current availability has not been refreshed automatically.`;
   }
 
   if (summary.refreshSkippedReason === "free_tier_quota") {
     return "This price is cached because the free-tier quota was reached.";
   }
 
-  if (summary.status === "unavailable") {
-    return `This ${product.category.replaceAll("_", " ")} moved down because it is currently unavailable.`;
-  }
-
-  const currentPriceCents = getCurrentBestPriceCents(summary);
   const expectedPriceCents = productExpectedPriceCents(product);
   if (currentPriceCents === null) {
     return `${product.name} stayed in place because the latest listing price could not be verified.`;

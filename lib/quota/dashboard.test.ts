@@ -6,18 +6,13 @@ function snapshot(overrides: Partial<PricesApiUsageSnapshot> = {}): PricesApiUsa
   return {
     policy: {
       provider: "pricesapi",
-      monthlyHardLimit: 950,
-      dailySoftLimit: 30,
-      minuteHardLimit: 8,
-      reserveMonthlyCalls: 50,
+      limitPerMinute: 10,
+      limitPerMonth: 1000,
     },
     minuteCallsUsed: 2,
-    dailyCallsUsed: 5,
     monthlyCallsUsed: 250,
-    minuteRemaining: 6,
-    dailyRemaining: 25,
-    monthlyRemaining: 700,
-    reserveRemaining: 50,
+    minuteRemaining: 8,
+    monthlyRemaining: 750,
     ...overrides,
   };
 }
@@ -27,14 +22,14 @@ describe("buildPricesApiDashboardMetrics", () => {
     const metrics = buildPricesApiDashboardMetrics(snapshot(), new Date("2026-04-25T12:00:00Z"));
 
     expect(metrics.calendarDaysRemaining).toBe(5);
-    expect(metrics.safeAverageCallsPerDay).toBe(30);
+    expect(metrics.safeAverageCallsPerDay).toBe(150);
   });
 
   it("returns no quota exhaustion estimate when there is no burn rate yet", () => {
     const metrics = buildPricesApiDashboardMetrics(
       snapshot({
         monthlyCallsUsed: 0,
-        monthlyRemaining: 950,
+        monthlyRemaining: 1000,
       }),
       new Date("2026-04-02T12:00:00Z"),
     );

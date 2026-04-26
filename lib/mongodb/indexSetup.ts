@@ -8,6 +8,8 @@ export interface MongoIndexSetupSummary {
     inventoryItems: string[];
     deviceCatalog: string[];
     recommendationLogs: string[];
+    priceSnapshots: string[];
+    apiUsageEvents: string[];
   };
 }
 
@@ -53,7 +55,7 @@ async function ensureDeviceCatalogTextIndex(collection: Collection): Promise<str
 export async function setupMongoIndexes(db: Db): Promise<MongoIndexSetupSummary> {
   const deviceCatalogCollection = db.collection("device_catalog");
 
-  const [users, userPrivateProfiles, inventoryItems, deviceCatalog, recommendationLogs] = await Promise.all([
+  const [users, userPrivateProfiles, inventoryItems, deviceCatalog, recommendationLogs, priceSnapshots, apiUsageEvents] = await Promise.all([
     db.collection("users").createIndexes([
       { key: { sourceKey: 1 }, unique: true },
       {
@@ -89,6 +91,19 @@ export async function setupMongoIndexes(db: Db): Promise<MongoIndexSetupSummary>
       { key: { userId: 1 } },
       { key: { userId: 1, createdAt: -1 } },
     ]),
+    db.collection("price_snapshots").createIndexes([
+      { key: { normalizedQuery: 1 } },
+      { key: { slug: 1 }, sparse: true },
+      { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+      { key: { provider: 1, normalizedQuery: 1 } },
+    ]),
+    db.collection("api_usage_events").createIndexes([
+      { key: { provider: 1, createdAt: -1 } },
+      { key: { provider: 1, eventType: 1, createdAt: -1 } },
+      { key: { normalizedQuery: 1 } },
+      { key: { deviceCatalogId: 1 }, sparse: true },
+      { key: { userId: 1 }, sparse: true },
+    ]),
   ]);
   const deviceCatalogTextIndex = await ensureDeviceCatalogTextIndex(deviceCatalogCollection);
 
@@ -100,6 +115,8 @@ export async function setupMongoIndexes(db: Db): Promise<MongoIndexSetupSummary>
       inventoryItems,
       deviceCatalog: [...deviceCatalog, deviceCatalogTextIndex],
       recommendationLogs,
+      priceSnapshots,
+      apiUsageEvents,
     },
   };
 }

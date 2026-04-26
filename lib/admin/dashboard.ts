@@ -91,6 +91,7 @@ export async function buildAdminDashboardData() {
       deviceType: recommendationContext.deviceType,
       privateProfile: recommendationContext.privateProfile,
       candidateProducts: recommendationContext.candidateProducts,
+      pricingByProductId: recommendationContext.pricingByProductId,
     } as const;
     const baseline = rankProductsForInput(input).slice(0, 16);
     const reranked = rerankProductRecommendationsWithAvailability(

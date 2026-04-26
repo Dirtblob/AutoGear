@@ -1,5 +1,11 @@
-import { reservePricesApiCall } from "@/lib/quota/pricesApiQuota";
+import { finalizeApiUsageEvent, reservePricesApiCall } from "@/lib/quota/pricesApiQuota";
 import { compareAvailabilityResults, scoreOfferConfidence, shouldRejectAvailabilityCandidate } from "./offerMatcher";
+import {
+  findPriceSnapshot,
+  normalizePriceSnapshotQuery,
+  priceSnapshotToSearchResponse,
+  writePriceSnapshot,
+} from "./priceSnapshots";
 import type {
   PricesApiOffer,
   PricesApiOffersProduct,
@@ -8,7 +14,7 @@ import type {
   PricesApiSearchResponse,
   PricesApiSearchResult,
 } from "./pricesApiTypes";
-import type { AvailabilityProductModel, AvailabilityProvider, AvailabilityResult } from "./types";
+import type { AvailabilityProductModel, AvailabilityProvider, AvailabilityResult, AvailabilitySearchResponse } from "./types";
 
 const DEFAULT_PROVIDER_NAME = "pricesapi";
 const DEFAULT_BASE_URL = "https://api.pricesapi.io";
@@ -24,6 +30,8 @@ interface PricesApiProviderOptions {
   fetchImpl?: typeof fetch;
   providerName?: string;
   manualRefresh?: boolean;
+  forceRefresh?: boolean;
+  userId?: string;
 }
 
 export class PricesApiQuotaLimitedError extends Error {
@@ -44,6 +52,10 @@ function definedText(value: string | undefined): string | undefined {
 
 function normalizeProviderName(value: string | undefined): string {
   return definedText(value)?.toLowerCase() ?? DEFAULT_PROVIDER_NAME;
+}
+
+function cacheSlug(productModel: AvailabilityProductModel): string | undefined {
+  return definedText(productModel.slug) ?? definedText(productModel.deviceCatalogId) ?? definedText(productModel.id);
 }
 
 function dedupeRequests(requests: PricesApiSearchRequest[]): PricesApiSearchRequest[] {
@@ -278,7 +290,7 @@ async function fetchPricesApiSearchResults(
 }
 
 async function fetchPricesApiOffers(
-  productId: string,
+  productId: string | number,
   options: Required<Pick<PricesApiProviderOptions, "apiKey" | "baseUrl" | "country" | "fetchImpl">>,
 ): Promise<PricesApiOffersProduct | null> {
   const url = buildUrl(options.baseUrl, `/api/v1/products/${encodeURIComponent(productId)}/offers`);
@@ -314,6 +326,8 @@ export function createPricesApiProvider(options: PricesApiProviderOptions = {}):
   const providerName = normalizeProviderName(options.providerName ?? process.env.PRICES_API_PROVIDER_NAME);
   const fetchImpl = options.fetchImpl ?? fetch;
   const manualRefresh = options.manualRefresh ?? false;
+  const forceRefresh = options.forceRefresh ?? false;
+  const userId = definedText(options.userId);
 
   if (!apiKey) {
     return null;
@@ -323,15 +337,43 @@ export function createPricesApiProvider(options: PricesApiProviderOptions = {}):
     name: providerName,
     async search(productModel) {
       const requests = buildSearchRequests(productModel);
-      const checkedAt = new Date();
+      const cachedSnapshot = await findPriceSnapshot({
+        slug: cacheSlug(productModel),
+        normalizedQueries: requests.map((request) => request.query),
+      });
+
+      const hasFreshCache = cachedSnapshot ? cachedSnapshot.expiresAt.getTime() > Date.now() : false;
+      if (cachedSnapshot && hasFreshCache && !forceRefresh) {
+        return priceSnapshotToSearchResponse(productModel, cachedSnapshot, {
+          refreshSource: "cached",
+        });
+      }
+
+      if (cachedSnapshot && !hasFreshCache && !manualRefresh && !forceRefresh) {
+        return priceSnapshotToSearchResponse(productModel, cachedSnapshot, {
+          refreshSource: "cached",
+          refreshSkippedReason: "cache_only",
+        });
+      }
 
       for (const request of requests) {
-        const searchReserved = await reservePricesApiCall(providerName, {
+        const checkedAt = new Date();
+        const searchReservationId = await reservePricesApiCall(providerName, {
           now: checkedAt,
-          manualRefresh,
+          query: request.query,
+          normalizedQuery: normalizePriceSnapshotQuery(request.query),
+          deviceCatalogId: productModel.deviceCatalogId,
+          userId,
+          requestCount: 1,
         });
 
-        if (!searchReserved) {
+        if (!searchReservationId) {
+          if (cachedSnapshot) {
+            return priceSnapshotToSearchResponse(productModel, cachedSnapshot, {
+              refreshSource: "cached",
+              refreshSkippedReason: "free_tier_quota",
+            });
+          }
           throw new PricesApiQuotaLimitedError(providerName);
         }
 
@@ -339,38 +381,104 @@ export function createPricesApiProvider(options: PricesApiProviderOptions = {}):
         try {
           const searchResults = await fetchPricesApiSearchResults(request, { apiKey, baseUrl, fetchImpl });
           selectedProduct = chooseBestProductResult(productModel, searchResults);
+          await finalizeApiUsageEvent(searchReservationId, true);
         } catch {
+          await finalizeApiUsageEvent(searchReservationId, false);
           selectedProduct = null;
         }
 
         if (!selectedProduct) {
+          await writePriceSnapshot({
+            deviceCatalogId: productModel.deviceCatalogId,
+            slug: cacheSlug(productModel),
+            query: request.query,
+            normalizedQuery: normalizePriceSnapshotQuery(request.query),
+            listings: [],
+            fetchedAt: checkedAt,
+            error: "No matching PricesAPI product result.",
+          });
           continue;
         }
 
-        const offersReserved = await reservePricesApiCall(providerName, {
+        const offersReservationId = await reservePricesApiCall(providerName, {
           now: checkedAt,
-          manualRefresh,
+          query: request.query,
+          normalizedQuery: normalizePriceSnapshotQuery(request.query),
+          deviceCatalogId: productModel.deviceCatalogId,
+          userId,
+          requestCount: 1,
         });
 
-        if (!offersReserved) {
+        if (!offersReservationId) {
+          if (cachedSnapshot) {
+            return priceSnapshotToSearchResponse(productModel, cachedSnapshot, {
+              refreshSource: "cached",
+              refreshSkippedReason: "free_tier_quota",
+            });
+          }
           throw new PricesApiQuotaLimitedError(providerName);
         }
 
         try {
           const product = await fetchPricesApiOffers(selectedProduct.id, { apiKey, baseUrl, country, fetchImpl });
           const offers = product?.offers ?? [];
-          return dedupeOffers(
+          await finalizeApiUsageEvent(offersReservationId, true);
+          const listings = dedupeOffers(
             offers
               .map((offer) => normalizeOffer(providerName, productModel, product ?? selectedProduct, offer, checkedAt))
               .filter((offer): offer is AvailabilityResult => Boolean(offer)),
           ).sort(compareAvailabilityResults);
+
+          await writePriceSnapshot({
+            deviceCatalogId: productModel.deviceCatalogId,
+            slug: cacheSlug(productModel),
+            query: request.query,
+            normalizedQuery: normalizePriceSnapshotQuery(request.query),
+            listings,
+            fetchedAt: checkedAt,
+            error: listings.length === 0 ? "No qualifying offers matched the catalog model." : undefined,
+          });
+
+          return {
+            listings,
+            checkedAt,
+            refreshSource: "live",
+            isStale: false,
+          } satisfies AvailabilitySearchResponse;
         } catch {
+          await finalizeApiUsageEvent(offersReservationId, false);
           // Failed requests still count against the free-tier budget.
-          return [];
+          await writePriceSnapshot({
+            deviceCatalogId: productModel.deviceCatalogId,
+            slug: cacheSlug(productModel),
+            query: request.query,
+            normalizedQuery: normalizePriceSnapshotQuery(request.query),
+            listings: [],
+            fetchedAt: checkedAt,
+            error: "PricesAPI offers lookup failed.",
+          });
+
+          return {
+            listings: [],
+            checkedAt,
+            refreshSource: "live",
+            isStale: false,
+          } satisfies AvailabilitySearchResponse;
         }
       }
 
-      return [];
+      const checkedAt = new Date();
+      return cachedSnapshot
+        ? priceSnapshotToSearchResponse(productModel, cachedSnapshot, {
+            refreshSource: "cached",
+            refreshSkippedReason: "cache_only",
+          })
+        : {
+            listings: [],
+            checkedAt,
+            refreshSource: "live",
+            isStale: false,
+          };
     },
   };
 }

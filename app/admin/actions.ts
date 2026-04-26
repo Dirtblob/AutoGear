@@ -16,6 +16,7 @@ import {
 } from "@/lib/recommendation/demoMode";
 import { rankProductsForInput } from "@/lib/recommendation/productEngine";
 import { getCachedAvailabilitySummaries } from "@/lib/availability";
+import { loadCachedRecommendationPriceSnapshots } from "@/lib/availability/priceSnapshots";
 import { buildToastHref } from "@/lib/ui/toasts";
 import { recordBackgroundJobError } from "@/lib/admin/debugState";
 import { buildRecommendationNarrationId } from "@/lib/llm/explanationCache";
@@ -40,10 +41,14 @@ function revalidateAdminPaths(): void {
 
 export async function runAdminDemoProfileAction(): Promise<void> {
   const profileData = serializeHackathonDemoProfile();
-  const availabilityByProductId = await getCachedAvailabilitySummaries(productCatalog);
+  const [availabilityByProductId, pricingByProductId] = await Promise.all([
+    getCachedAvailabilitySummaries(productCatalog),
+    loadCachedRecommendationPriceSnapshots(productCatalog),
+  ]);
   const recommendationInput = {
     ...buildHackathonDemoRecommendationInput(),
     availabilityByProductId,
+    pricingByProductId,
   };
   const recommendations = rankProductsForInput(recommendationInput).slice(0, 8);
 
@@ -102,17 +107,17 @@ export async function runAdminDemoProfileAction(): Promise<void> {
 export async function runAdminPriceRefreshAction(): Promise<void> {
   const providerName = getPricesApiProviderName();
   const snapshot = await getPricesApiUsageSnapshot(providerName);
-  const hasCapacity = snapshot.monthlyRemaining > 0 && snapshot.dailyRemaining > 0 && snapshot.minuteRemaining > 0;
+  const hasCapacity = snapshot.monthlyRemaining > 0 && snapshot.minuteRemaining > 0;
 
   if (!hasCapacity) {
     redirect(buildToastHref("/admin", "price_refresh_quota_blocked"));
   }
 
   try {
-    const lowDailyQuota = snapshot.dailyRemaining < 10;
+    const lowMonthlyQuota = snapshot.monthlyRemaining < 100;
     await refreshPrices();
     revalidateAdminPaths();
-    redirect(buildToastHref("/admin", lowDailyQuota ? "price_refresh_low_quota" : "price_refresh_completed"));
+    redirect(buildToastHref("/admin", lowMonthlyQuota ? "price_refresh_low_quota" : "price_refresh_completed"));
   } catch (error) {
     await recordBackgroundJobError({
       jobName: "refreshPrices",
@@ -123,10 +128,14 @@ export async function runAdminPriceRefreshAction(): Promise<void> {
 }
 
 export async function testGemmaExplanationAction(): Promise<void> {
-  const availabilityByProductId = await getCachedAvailabilitySummaries(productCatalog);
+  const [availabilityByProductId, pricingByProductId] = await Promise.all([
+    getCachedAvailabilitySummaries(productCatalog),
+    loadCachedRecommendationPriceSnapshots(productCatalog),
+  ]);
   const recommendationInput = {
     ...buildHackathonDemoRecommendationInput(),
     availabilityByProductId,
+    pricingByProductId,
   };
   const categoryRecommendations = getCategoryRecommendations(recommendationInput);
   const productRecommendation = rankProductsForInput(recommendationInput)[0];

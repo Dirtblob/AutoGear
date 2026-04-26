@@ -5,6 +5,7 @@ import { RecommendationCard } from "@/components/RecommendationCard";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { getCachedAvailabilitySummaries } from "@/lib/availability";
+import { loadCachedRecommendationPriceSnapshots } from "@/lib/availability/priceSnapshots";
 import { buildRecommendationNarrationId } from "@/lib/llm/explanationCache";
 import { readCachedRecommendationNarrations } from "@/lib/llm/recommendationNarrator";
 import { loadMongoRecommendationProducts, recommendationProductToAvailabilityModel } from "@/lib/recommendation/mongoDeviceProducts";
@@ -21,14 +22,17 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const candidateProducts = await loadMongoRecommendationProducts();
   const previewProducts = candidateProducts.slice(0, 3);
-  const cachedAvailabilityByProductId = await getCachedAvailabilitySummaries(
-    candidateProducts.map((product) => recommendationProductToAvailabilityModel(product, { allowUsed: true })),
-  );
+  const availabilityModels = candidateProducts.map((product) => recommendationProductToAvailabilityModel(product, { allowUsed: true }));
+  const [cachedAvailabilityByProductId, pricingByProductId] = await Promise.all([
+    getCachedAvailabilitySummaries(availabilityModels),
+    loadCachedRecommendationPriceSnapshots(availabilityModels),
+  ]);
   const availabilityByProductId = cachedAvailabilityByProductId;
   const demoInput = {
     ...buildHackathonDemoRecommendationInput(),
     candidateProducts,
     availabilityByProductId,
+    pricingByProductId,
   };
   const demoPriorityList = buildHackathonDemoPriorityList(demoInput);
   const topRecommendations = demoPriorityList

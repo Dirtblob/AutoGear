@@ -9,11 +9,13 @@ export interface AvailabilityProductModel {
   gtin?: string;
   upc?: string;
   allowUsed?: boolean;
+  deviceCatalogId?: string;
+  slug?: string;
 }
 
 export interface AvailabilityProvider {
   name: string;
-  search(productModel: AvailabilityProductModel): Promise<AvailabilityResult[]>;
+  search(productModel: AvailabilityProductModel): Promise<AvailabilitySearchResponse>;
 }
 
 export interface AvailabilityResult {
@@ -34,6 +36,14 @@ export interface AvailabilityResult {
   checkedAt: Date;
 }
 
+export interface AvailabilitySearchResponse {
+  listings: AvailabilityResult[];
+  checkedAt: Date;
+  refreshSource: AvailabilityRefreshSource;
+  refreshSkippedReason?: AvailabilityRefreshSkipReason;
+  isStale?: boolean;
+}
+
 export type AvailabilityDisplayStatus = "available" | "unavailable" | "checking_not_configured";
 export type AvailabilityRefreshSource = "live" | "cached" | "not_configured";
 export type AvailabilityRefreshSkipReason = "free_tier_quota" | "refresh_window" | "cache_only";
@@ -48,4 +58,5 @@ export interface AvailabilitySummary {
   checkedAt: Date | null;
   refreshSource: AvailabilityRefreshSource;
   refreshSkippedReason?: AvailabilityRefreshSkipReason;
+  isStale?: boolean;
 }
