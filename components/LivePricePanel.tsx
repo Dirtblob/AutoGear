@@ -67,7 +67,7 @@ export function LivePricePanel({ deviceCatalogId, slug, initialState, className 
   }
 
   return (
-    <div className={`rounded-2xl border border-white/10 bg-slate-900/65 p-4 backdrop-blur-xl ${className}`}>
+    <div className={`rounded-2xl border border-white/10 bg-slate-900/65 p-4 text-slate-100 backdrop-blur-xl ${className}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Live pricing</p>

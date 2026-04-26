@@ -254,7 +254,7 @@ export function OnboardingFlow() {
         </div>
       </aside>
 
-      <section className="rounded-[2rem] border border-white/70 bg-white/88 p-6 shadow-panel backdrop-blur md:p-8">
+      <section className="rounded-[2rem] border border-white/80 bg-white/95 p-6 shadow-panel backdrop-blur md:p-8">
         <div className="flex flex-col gap-4 border-b border-ink/8 pb-6 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-moss">
@@ -263,7 +263,7 @@ export function OnboardingFlow() {
             <h2 className="mt-3 font-display text-3xl font-semibold text-ink">{currentStepConfig.title}</h2>
             <p className="mt-3 max-w-2xl leading-7 text-ink/65">{currentStepConfig.description}</p>
           </div>
-          <div className="rounded-[1.4rem] bg-[linear-gradient(135deg,rgba(23,33,31,0.96),rgba(66,104,90,0.92))] px-4 py-3 text-sm leading-6 text-white/78">
+          <div className="rounded-[1.4rem] bg-[linear-gradient(135deg,rgba(23,33,31,0.96),rgba(66,104,90,0.92))] px-4 py-3 text-sm leading-6 text-white/85">
             Judge-friendly flow: answer, save, add current gear, reveal ranked upgrades.
           </div>
         </div>
@@ -622,7 +622,7 @@ function SegmentedButton({
       className={`rounded-[1.25rem] px-4 py-3 text-sm font-semibold transition ${
         selected
           ? "bg-[linear-gradient(135deg,#17211f_0%,#42685a_100%)] text-white shadow-soft"
-          : "border border-ink/10 bg-mist/70 text-ink/70 hover:border-moss/25 hover:bg-white"
+          : "border border-ink/10 bg-white text-ink/80 hover:border-moss/25 hover:bg-mist"
       }`}
     >
       {label}
@@ -648,7 +648,7 @@ function SelectableCard({
       className={`rounded-[1.45rem] border px-4 py-4 text-left transition ${
         selected
           ? "border-moss bg-[linear-gradient(180deg,rgba(66,104,90,0.12),rgba(66,104,90,0.04))] ring-4 ring-moss/10"
-          : "border-ink/10 bg-mist/70 hover:border-moss/25 hover:bg-white"
+          : "border-ink/10 bg-white hover:border-moss/25 hover:bg-mist"
       }`}
     >
       <div className="flex items-start justify-between gap-4">
@@ -679,7 +679,7 @@ function ReviewCard({
   }>;
 }) {
   return (
-    <section className="rounded-3xl border border-ink/8 bg-mist/65 p-5">
+    <section className="rounded-3xl border border-ink/8 bg-white p-5">
       <h3 className="font-display text-lg font-semibold text-ink">{title}</h3>
       <div className="mt-4 space-y-3">
         {rows.map((row) => (
@@ -708,7 +708,7 @@ function TagSummaryCard({
       <div className="mt-4 flex flex-wrap gap-2">
         {items.length > 0 ? (
           items.map((item) => (
-            <span key={item} className="rounded-full bg-mist px-3 py-2 text-sm font-medium text-ink/75">
+            <span key={item} className="rounded-full bg-mist px-3 py-2 text-sm font-medium text-ink/80">
               {item}
             </span>
           ))
@@ -721,7 +721,7 @@ function TagSummaryCard({
 }
 
 function inputClassName(hasError: boolean) {
-  return `w-full rounded-[1.25rem] border bg-mist/80 px-4 py-3 text-base text-ink outline-none transition focus:ring-4 ${
+  return `w-full rounded-[1.25rem] border bg-white px-4 py-3 text-base text-ink outline-none transition placeholder:text-ink/40 focus:ring-4 ${
     hasError ? "border-clay/40 ring-clay/10" : "border-ink/10 ring-moss/10 focus:border-moss/30"
   }`;
 }

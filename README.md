@@ -1,165 +1,166 @@
-# LifeUpgrade
+# AutoGear
 
-## Project Pitch
+AutoGear is an accesible web application that helps people figure out the *next office equipment upgrade that will improve their setup and pain points that the user has*, recommending the most compatible products the user may not even know about.
 
-LifeUpgrade is a hackathon MVP that recommends the next product upgrade most likely to remove friction from a user's life.
+Most shopping tools start with "What do you want to buy?" AutoGear starts with "What do you already own, what is frustrating, what space or budget constraints matter, and what would make the biggest difference?" It turns that context into a ranked, explainable upgrade plan.
 
-Most shopping flows start with a search query. LifeUpgrade starts with context: what the user already owns, what hurts, what slows them down, what their room allows, and what they can spend. The app then ranks upgrade categories and specific product models with deterministic scoring, so the recommendation can be explained to users and judges without relying on a black-box answer.
+> AutoGear does not recommend what you search for. It recommends what would remove friction from your setup.
 
-Closing pitch:
+## Project Description
 
-> LifeUpgrade does not recommend what you search for. It recommends what would remove friction from your life.
+AutoGear is an explainable recommendation app for desk, study, and work setups. A user can describe their pain points, budget, room constraints, and current gear, then AutoGear identifies the highest-impact upgrade categories and the specific models that best fit their needs.
+
+This is built for a hackathon demo, so the product is intentionally visual, fast to understand, and easy to present:
+
+- a clean landing page with instant demo mode,
+- a guided onboarding flow,
+- inventory capture through manual entry or video scan,
+- a recommendation dashboard with score breakdowns and reasoning,
+- optional live pricing and watchlist alerts,
+- admin tooling that shows the system is real, inspectable, and extensible.
+
+## Problem
+
+We live in a world filled with technologies nowdays. With work styles leaning more and more towards spending time in front of laptops, a comfortable office space is crucial for maintaining long-term health and well being.
+
+However, people often waste money upgrading the wrong thing first.
+
+For example, someone might think they need a new laptop, when the real high-impact fix is a monitor, stand, chair, or better lighting. AutoGear is designed to catch those hidden bottlenecks and recommend the upgrade with the best payoff for that person’s actual setup.
+
+## Unique Traits
+
+- **Context-first recommendations**: uses current inventory, problems, budget, preferences, room constraints, and optional private fit data.
+- **Explainable ranking**: every recommendation is backed by deterministic scoring instead of a black-box answer.
+- **Model-level suggestions**: the app does not stop at "buy a monitor"; it ranks specific products.
+- **Inventory-aware logic**: recommendations change based on what the user already owns and how good or bad that gear is.
+- **Fit-aware scoring**: private profile inputs like hand fit, comfort priorities, and sensitivities improve mouse, keyboard, chair, and display recommendations.
+- **Price-aware decisions**: cached or refreshed pricing can move products up or down in the ranking.
+- **Privacy**: MongoDB to store all sensitive data the user inputed, and authentication through Clerk for user protection
 
 ## Features
 
-- Landing page demo flow with a one-click laptop-only student scenario.
-- Multi-step onboarding for profession, age range, budget, spending style, preferences, problems, ports, and room constraints.
-- Manual inventory entry with product model autocomplete and imported catalog specs.
-- Browser-side video scan review that turns local object detections into editable inventory estimates.
-- Deterministic category and product recommendations with score breakdowns, tradeoffs, and rejection reasoning.
-- Price-aware ranking that can move products up or down based on cached or fresh availability snapshots.
-- Available-only, under-budget, quiet-product, and small-space filters.
-- Watchlist actions and in-app alerts for price drops, target-price hits, score jumps, and top-3 movement.
-- Admin quota dashboard for PricesAPI usage, refresh controls, and recent job summaries.
-- Admin catalog review surface for searching static models and reviewing manual JSON imports.
-- Optional hosted Gemma 4 narrator through the Gemini API, with cached on-demand explanations while deterministic scores remain the source of truth.
-- Settings controls for editing profile data, deleting the profile, and deleting inventory.
+### 1. Guided setup understanding
 
-## Architecture
+- Multi-step onboarding for budget, problems, preferences, ports, device type, and room constraints.
+- Separate private profile for fit and comfort data such as hand size, grip style, sensitivities, and ergonomic priorities.
+- Local demo fallback when auth is not configured, so the full product can still be explored quickly.
 
-LifeUpgrade uses Next.js App Router, TypeScript, Tailwind CSS, Prisma, and SQLite.
+### 2. Smart inventory capture
 
-- `app/`: Route handlers, pages, server actions, cron endpoint, and admin surfaces.
-- `components/`: Reusable UI components, onboarding flow, video scan UI, recommendation cards, autocomplete, and shared controls.
-- `data/productCatalog.ts`: Seed recommendation catalog and autocomplete catalog products.
-- `lib/recommendation/`: Pure deterministic category scoring, product scoring, dashboard helpers, rejection explanations, demo mode, and watchlist alert rules.
-- `lib/availability/`: Provider interface, mock provider, PricesAPI.io provider, offer matching, cached summaries, and display helpers.
-- `lib/quota/`: PricesAPI policy, usage snapshots, quota reservations, and dashboard metrics.
-- `lib/jobs/`: Refresh product selection, price refresh job, recommendation reranking, and watchlist alert creation.
-- `lib/catalog/`: Model search, spec normalization, ingestion pipeline, and pluggable catalog providers.
-- `lib/vision/`: Frame sampling, TensorFlow.js COCO-SSD provider, scan aggregation, style signals, and dimension estimates.
-- `lib/llm/`: Gemma provider, prompt templates, deterministic fallback narrator, and training data export helpers.
-- `prisma/schema.prisma`: Profiles, inventory, recommendations, saved products, alerts, availability snapshots, API usage, refresh policies, recent views, job runs, and training examples.
+- Manual inventory entry for laptops, monitors, keyboards, mice, chairs, lamps, headphones, webcams, and more.
+- Device lookup that merges Mongo-backed rated catalog entries with optional Best Buy search results.
+- Exact model/config capture so the engine can distinguish vague ownership from known hardware.
+- Browser-based video scan using TensorFlow.js COCO-SSD, with review before saving anything.
 
-PricesAPI.io calls are intentionally isolated to server-side availability and background job modules. React components and page renders read cached `AvailabilitySnapshot` rows and never call PricesAPI directly.
+### 3. Explainable recommendation engine
 
-## Recommendation Design
+- Identifies the user’s biggest upgrade opportunities first.
+- Ranks upgrade categories before ranking specific products.
+- Shows product score breakdowns, fit score, trait delta score, tradeoffs, and why alternatives were rejected.
+- Includes filters like under budget, available only, quiet products only, and small-space friendly.
+- Includes product detail pages with ranking-change explanations and availability summaries.
 
-Category scoring identifies which upgrade type matters first. It considers missing inventory, weak current items, selected problems, room constraints, profession, budget pressure, and normalized specs from imported inventory.
+### 4. Live value signals
 
-Product scoring lives in `lib/recommendation/productEngine.ts` and uses:
+- Watchlist/save flow for interesting products.
+- In-app alerts for price drops, target hits, availability changes, score jumps, and top-3 movement.
+- Asynchronous background price refresh architecture with quota-aware behavior for external APIs.
+
+### 5. Admin and technical depth
+
+- Admin control room for quota, jobs, recommendation drift, scan telemetry, and narrator health.
+- Device intelligence tools for normalized specs, trait ratings, validation, and import/export.
+- Training-data tooling for capturing recommendation examples for future model tuning.
+- Catalog review surfaces that make the system feel maintainable, not just hardcoded.
+
+## How The Recommendation Engine Works
+
+AutoGear uses a deterministic scoring system, which is important for both trust and demo clarity.
+
+The app first decides **which category matters most** for the user, then ranks **which product inside that category** is the best fit.
+
+Current product-score weights:
 
 ```text
 finalScore =
-  problemFit * 0.30 +
-  constraintFit * 0.20 +
-  valueFit * 0.25 +
-  compatibilityFit * 0.10 +
-  availabilityFit * 0.10 +
-  confidence * 0.05
+  problemFit       * 0.22 +
+  traitDeltaFit    * 0.20 +
+  ergonomicFit     * 0.18 +
+  constraintFit    * 0.13 +
+  valueFit         * 0.14 +
+  compatibilityFit * 0.05 +
+  availabilityFit  * 0.05 +
+  confidence       * 0.03
 ```
 
-The LLM narrator never changes these scores. It only receives the deterministic score, breakdown, reasons, availability state, and rejected alternatives so it can explain them.
+This lets AutoGear explain not just *what* it recommended, but *why*:
 
-## Video Scan Design
+- what pain points the product solves,
+- how much better it is than the current device,
+- whether it fits the desk, room, and portability constraints,
+- whether the price is worth it,
+- whether the system has enough confidence in the recommendation.
 
-The scan flow is a browser-side estimate, not ground truth.
+## AI Usage
 
-- `components/VideoScanner.tsx` requests camera access and samples frames locally.
-- `lib/vision/tfjsCocoProvider.ts` runs COCO-SSD in the browser.
-- `lib/vision/scanAggregator.ts` combines repeated detections into suggested inventory.
-- `components/ScanReview.tsx` shows confidence, count estimates, size estimates, and editable suggestions.
-- Only approved scan items are saved to SQLite.
+AutoGear includes an optional narration layer powered by hosted Gemma through the Gemini API.
 
-The UI repeatedly states that video detections are estimates. Exact brand, model, and specs are added or corrected in manual inventory.
+The important design choice is that AI is **not** the source of truth for ranking. The LLM only turns deterministic outputs into better explanation copy. If Gemini is unavailable, the app falls back to deterministic explanation text.
 
-## Product Catalog Design
+That means the scoring, budget logic, ranking order, and availability state remain stable and inspectable.
 
-The MVP uses a seed catalog in `data/productCatalog.ts`.
+## Demo Story
 
-- Recommendation products include category, brand, model, price, problem coverage, constraints, scoring hints, identifiers, and search queries.
-- Autocomplete products include normalized specs such as laptop RAM, ports, monitor resolution, mouse ergonomics, keyboard noise, and chair support.
-- Inventory stores `catalogProductId` and `specsJson` when a user selects an autocomplete match.
-- Recommendation scoring reads imported specs through pure functions in `lib/catalog/specNormalizer.ts`.
-- Admin catalog review supports static search and manual JSON import review without writing directly into the seed file.
+### Fastest demo
 
-Live catalog providers are intentionally pluggable and isolated under `lib/catalog/providers/`.
+1. Open `/`.
+2. Click `Run demo mode`.
+3. Go to `/recommendations`.
+4. Show the top life gap, top category, and top product.
+5. Save a product to the watchlist.
+6. Run a refresh from `/admin/api-usage`.
+7. Open `/alerts` to show the pricing/watchlist payoff.
 
-## PricesAPI.io Integration
+### Stronger full walkthrough
 
-LifeUpgrade uses PricesAPI.io as a background-only price source.
+1. Run a video scan on `/scan`.
+2. Save a few inventory suggestions.
+3. Add an exact device in `/inventory`.
+4. Add comfort and fit details in `/profile`.
+5. Re-open `/recommendations` and show how the ranking changes.
+6. Open `/admin` to show the system’s internal depth.
 
-- Base URL: `https://api.pricesapi.io`
-- Product search: `GET /api/v1/products/search?q={query}&limit=10`
-- Offers lookup: `GET /api/v1/products/{id}/offers?country={country}`
-- Auth header: `x-api-key: {PRICES_API_KEY}`
+## Tech Stack
 
-The offers endpoint can take 5-30 seconds, so it is never called from React components or page render. `refreshPrices()` performs search and offers lookups in the background, writes normalized `AvailabilitySnapshot` rows, and recommendation pages use those cached rows. Recommendation runs are cache-only by default; `AUTO_REFRESH_TOP_RECOMMENDATION_PRICE=true` may refresh only the current #1 recommendation when no fresh cache exists and quota is healthy.
+- Next.js App Router
+- React 19
+- TypeScript
+- Tailwind CSS
+- Prisma + SQLite
+- MongoDB
+- TensorFlow.js COCO-SSD
+- Optional Clerk auth
+- Optional PricesAPI integration
+- Optional Gemini / Gemma narration
 
-## PricesAPI Free-Tier Policy
+## Architecture Highlights
 
-The PricesAPI free tier is treated as a scarce budget.
+- SQLite stores profiles, recommendations, alerts, cached availability, job runs, narrator cache, and training examples.
+- MongoDB stores users, inventory items, and the device catalog that powers search and fit scoring.
+- PricesAPI is background-only, so the UI reads cached availability instead of blocking on live requests.
+- Best Buy search is used only to enrich device lookup during inventory entry.
 
-- Monthly hard limit: `950` calls.
-- Daily soft cap: `30` automatic refresh calls.
-- Minute hard limit: `8` calls.
-- Reserve: `50` monthly calls are held back from a 1,000-call plan.
+## Local Setup
 
-Quota enforcement rules:
+### Prerequisites
 
-- Server code calls `canUsePricesApi()` before refresh attempts.
-- Actual PricesAPI calls reserve quota through `reservePricesApiCall()` before network fetch.
-- In-process reservations are serialized so concurrent server calls cannot bypass the local quota gate.
-- Failed provider requests still count against quota once reserved.
-- If quota is exhausted, the app shows cached prices with a `PricesAPI quota-limited` badge instead of treating the state as a user-facing error.
-- The `available only` filter hides unavailable products and keeps unknown availability out of that filtered view.
+- Node.js 20+
+- npm
+- a MongoDB instance, local or Atlas
 
-Cached price cards show both a status and a last-checked timestamp, for example `Cached price from PricesAPI` and `Last checked Apr 25, 12:00 PM PDT (2 hours ago)`.
+### Environment
 
-## Background Job Policy
-
-Background jobs are conservative by default.
-
-- `selectProductsForRefresh()` picks watchlisted products with target prices first, then top recommendations, then recently viewed products.
-- The refresh job does not perform full-catalog crawling on the free tier.
-- Watchlisted products refresh at most every 12 hours.
-- Top recommendations and recently viewed products refresh at most daily.
-- `refreshPrices()` records a `JobRun`, reranks saved recommendations, and creates watchlist alerts.
-- The Vercel cron route is protected by `CRON_SECRET`.
-- Quota-limited refresh skips are expected states and appear in the admin dashboard.
-
-The included `vercel.json` schedules `/api/cron/refresh-prices` every 6 hours, but local demo mode can use the admin dashboard's `Run refresh now` button.
-
-## Gemma Narrator Design
-
-Gemma is optional and does not require fine-tuning. LifeUpgrade uses hosted Gemma 4 through the Gemini API with `GEMINI_MODEL=gemma-4-26b-a4b-it` by default. If `GEMINI_API_KEY` is not set, Gemini is unavailable, the daily soft cap is exhausted, or the response fails validation, LifeUpgrade falls back to deterministic explanation copy.
-
-Recommendation pages do not call Gemini during render. They read `RecommendationExplanationCache` rows keyed by `recommendationId + productId + inputHash`; if no cache entry exists, the UI shows deterministic fallback copy. Gemini is called only from explicit generate or refresh actions, then the result is stored for future page renders.
-
-Guardrails:
-
-- Gemma receives deterministic recommendation inputs and score breakdowns.
-- Gemma can only provide `headline`, `explanation`, `whyThisHelps`, `tradeoffs`, `whyNotCheaper`, `whyNotMoreExpensive`, `confidenceNote`, and `followUpQuestion`.
-- Gemma output is validated with a strict Zod JSON schema before display.
-- Fallback copy is used when output is invalid.
-- Fallback copy is used when Gemini errors, rate-limits, or the configured daily soft cap is exhausted.
-- `GEMINI_DAILY_SOFT_CAP` defaults to `200` and blocks additional on-demand refreshes after the cap is reached.
-- Unavailable products are not described as currently available.
-- Quota-limited cached prices are called out in the confidence note.
-- Numeric scores, ranking, budget logic, and availability states are never changed by the LLM.
-- Recommendation UI shows whether each explanation came from cached Gemma output or deterministic fallback.
-- The admin dashboard shows Gemini calls today, cached hits, failures, and fallback count.
-
-Hosted API limits:
-
-- The free Gemini API tier is limited and should be treated as demo capacity, not unlimited production capacity.
-- A paid tier gives higher rate limits and more predictable headroom, but it is still governed by quotas, rate limits, and billing controls.
-- There is no truly unlimited hosted API for Gemma or Gemini usage.
-- Self-hosting Gemma removes hosted API quotas, but it requires enough local or cloud hardware, deployment work, monitoring, and operational budget.
-
-Fine-tuning is a future improvement, not a requirement. Training examples can be exported from the admin training-data page for a later LoRA workflow, but the app is designed to run today with a base Gemma endpoint.
-
-## Environment Variables
+Copy `.env.example` to `.env.local` or `.env`.
 
 Required:
 
@@ -172,140 +173,44 @@ MONGODB_DB_NAME="lifeupgrade"
 Optional:
 
 ```bash
-AVAILABILITY_PROVIDER="mock"
-DEV_USER_ID="dev-user"
-CRON_SECRET="replace-me"
-PRICES_API_BASE_URL="https://api.pricesapi.io"
-PRICES_API_KEY="replace-me"
-PRICES_API_COUNTRY="us"
-AUTO_REFRESH_TOP_RECOMMENDATION_PRICE="false"
-GEMINI_API_KEY="replace-me"
-GEMINI_MODEL="gemma-4-26b-a4b-it"
-GEMINI_DAILY_SOFT_CAP="200"
-```
-
-Inventory is currently backed by MongoDB collections named `users` and `inventory_items`. Until real auth is added,
-server code uses the temporary `DEV_USER_ID` value for every inventory item and creates that dev user automatically.
-For local-only testing, `MONGODB_URI="mongodb://localhost:27017/lifeupgrade"` also works. For Atlas, use the Atlas
-connection string and make sure the local IP is allowed in Network Access.
-
-`AVAILABILITY_PROVIDER` defaults to `mock`. Use `pricesapi` only when `PRICES_API_KEY` is configured. `PRICES_API_BASE_URL` defaults to `https://api.pricesapi.io`, and the old `PRICE_API_*` env vars still work as temporary fallbacks. If the PricesAPI provider is selected without credentials, LifeUpgrade falls back to mock availability. `AUTO_REFRESH_TOP_RECOMMENDATION_PRICE` defaults to `false`; when enabled it still checks the fresh cache, monthly reserve, and minute quota before a live lookup.
-
-`GEMINI_API_KEY` enables hosted Gemma 4 narration through the Gemini API. `GEMINI_MODEL` defaults to `gemma-4-26b-a4b-it`, and `GEMINI_DAILY_SOFT_CAP` defaults to `200`. The admin dashboard includes a `Test Gemma explanation` button that generates or refreshes a cached demo recommendation explanation and reports whether Gemini or deterministic fallback handled it.
-
-## MongoDB Migration Setup
-
-Required env vars:
-
-```bash
-DATABASE_URL="file:./dev.db"
-MONGODB_URI="mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/lifeupgrade"
-MONGODB_DB_NAME="lifeupgrade"
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+BESTBUY_API_KEY=
+PRICES_API_KEY=
+GEMINI_API_KEY=
 DEV_USER_ID="dev-user"
 ```
 
-Set up MongoDB indexes:
-
-```bash
-npm run db:setup-indexes
-```
-
-Seed or update the MongoDB device catalog:
-
-```bash
-npm run db:seed-devices
-```
-
-Migrate SQLite, hardcoded demo, and detected JSON inventory/profile data into MongoDB:
-
-```bash
-npm run db:migrate-inventory
-```
-
-Start the app:
-
-```bash
-npm run dev
-```
-
-Run the manual MongoDB migration verifier from a second terminal while the app is running:
-
-```bash
-APP_BASE_URL="http://localhost:3000" npm run verify:mongodb-migration
-```
-
-The verifier checks Atlas connectivity, index creation, device seed insert/update behavior, inventory migration
-insert/update behavior, `/api/devices`, current-user inventory scoping, inventory POST/PATCH/DELETE, and a
-MongoDB-backed recommendation ranking.
-
-## How To Run Locally
-
-Install dependencies:
+### Run locally
 
 ```bash
 npm install
-```
-
-Create and initialize the local database:
-
-```bash
 npm run db:init
-```
-
-Start the app:
-
-```bash
+npm run db:setup-indexes
+npm run db:seed-devices
 npm run dev
 ```
 
-Open `http://localhost:3000`, or the alternate port printed by Next.js.
+Then open `http://localhost:3000`.
 
-Useful validation commands:
+## Useful Scripts
 
 ```bash
+npm run dev
 npm run lint
 npm run typecheck
 npm run test
 npm run build
-```
-
-Run the price refresh job locally:
-
-```bash
 npm run job:refresh-prices
+npm run db:check
+npm run db:seed-devices
+npm run verify:mongodb-migration
 ```
 
-## How To Run Demo Mode
+## Current Limitations
 
-Fastest landing-page demo:
-
-1. Start the app.
-2. Open `/`.
-3. Click `Run demo mode`.
-4. Open `/recommendations`.
-5. Run a mock price refresh from `/admin/api-usage` to trigger the seeded watchlist price-drop alert.
-6. Open `/alerts`.
-
-Full walkthrough:
-
-1. Open `/scan` and run or describe the local video scan.
-2. Review the estimated detections and save approved inventory.
-3. Open `/inventory`.
-4. Use product autocomplete to select an exact laptop and mouse.
-5. Confirm imported specs appear on the saved inventory cards.
-6. Open `/onboarding` or use demo onboarding to set neck pain, eye strain, low productivity, and a `$300` budget.
-7. Open `/recommendations`.
-8. Show laptop stand and monitor ranked above a new laptop.
-9. Show cached or fresh prices with last-checked timestamps.
-10. Show the watchlist alert after the price refresh.
-
-## Known Limitations
-
-- Availability is mocked by default. Live prices require PricesAPI credentials.
-- The browser video scan uses COCO-SSD estimates and does not identify exact product models.
-- Admin catalog approval is an in-session review surface; it does not rewrite `data/productCatalog.ts`.
-- There is no authentication. The MVP uses a local demo profile in SQLite.
-- Email and push notification delivery are not implemented; alerts are in-app only.
-- Vercel Hobby cron may not be reliable for frequent refreshes.
-- PricesAPI quota is enforced per app process and persisted through SQLite counters, but a multi-region production deployment would need a centralized quota lock.
-- Gemma narration is optional and does not replace deterministic scoring.
+- Video scan is estimate-only and does not identify exact models reliably.
+- Best Buy search results are helpful for manual entry, but unrated results still behave like custom devices.
+- PricesAPI is quota-limited and intentionally background-only.
+- Alerts are currently in-app only.
+- The project is optimized for a narrow scope, instead of entire home upgrades

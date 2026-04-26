@@ -49,7 +49,7 @@ export function RecommendationCard({ recommendation, availability, narration, na
       ];
 
   return (
-    <article className="rounded-[1.85rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_24px_65px_rgba(2,6,23,0.55)] backdrop-blur-xl">
+    <article className="rounded-[1.85rem] border border-white/10 bg-slate-900/70 p-6 text-slate-100 shadow-[0_24px_65px_rgba(2,6,23,0.55)] backdrop-blur-xl">
       <div className="flex items-start justify-between gap-5">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">

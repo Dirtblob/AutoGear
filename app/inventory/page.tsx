@@ -197,7 +197,7 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-moss">Current inventory</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">Current inventory</p>
             <h2 className="mt-2 font-display text-2xl font-semibold text-white">What the engine sees right now</h2>
           </div>
           {inventory.length > 0 ? (

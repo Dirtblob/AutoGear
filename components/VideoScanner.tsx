@@ -290,7 +290,7 @@ export function VideoScanner() {
           </div>
         </div>
 
-        <div className="space-y-4 rounded-[2rem] border border-white/70 bg-white/88 p-6 shadow-panel backdrop-blur">
+        <div className="space-y-4 rounded-[2rem] border border-white/80 bg-white/95 p-6 shadow-panel backdrop-blur">
           <div className="rounded-[1.5rem] bg-mist/80 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">Privacy</p>
             <p className="mt-2 text-sm leading-6 text-ink/72">
@@ -312,7 +312,7 @@ export function VideoScanner() {
             </div>
           ) : null}
 
-          <div className="rounded-[1.5rem] border border-dashed border-ink/12 p-4">
+          <div className="rounded-[1.5rem] border border-dashed border-ink/12 bg-mist/80 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">Fallback path</p>
             <p className="mt-2 text-sm leading-6 text-ink/68">
               If camera access or the TensorFlow.js model fails, you can still capture the setup manually.
@@ -320,7 +320,7 @@ export function VideoScanner() {
             <div className="mt-4">
               <Link
                 href="/inventory"
-                className="inline-flex items-center justify-center rounded-full border border-ink/12 px-5 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
+                className="inline-flex items-center justify-center rounded-full border border-ink/12 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
               >
                 Open manual inventory entry
               </Link>

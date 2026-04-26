@@ -16,7 +16,7 @@ export function ProductCard({ product, availability }: ProductCardProps) {
   const priceStatusBadge = getAvailabilityStatusBadge(availability);
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-5 shadow-[0_24px_65px_rgba(2,6,23,0.55)] backdrop-blur-xl">
+    <article className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-5 text-slate-100 shadow-[0_24px_65px_rgba(2,6,23,0.55)] backdrop-blur-xl">
       <div className="mb-5 rounded-[1.4rem] bg-[linear-gradient(135deg,rgba(15,23,42,0.98),rgba(8,47,73,0.92))] p-4 text-white">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100/60">
           {categoryLabels[product.category]}

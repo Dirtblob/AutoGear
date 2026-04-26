@@ -51,7 +51,7 @@ export function InventoryItemCard({
   const importedSpecs = item.specs ? Object.entries(item.specs).filter(([, value]) => value !== undefined).slice(0, 5) : [];
 
   return (
-    <article className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-5 shadow-[0_24px_65px_rgba(2,6,23,0.55)] backdrop-blur-xl">
+    <article className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-5 text-slate-100 shadow-[0_24px_65px_rgba(2,6,23,0.55)] backdrop-blur-xl">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200/80">{categoryLabel}</p>

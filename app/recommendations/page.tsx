@@ -683,7 +683,7 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
 
                         {narrationOutput ? (
                           <div className="mt-5 rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">
                               Narrator layer: {narratorSourceLabel(narration?.source)}
                             </p>
                             <p className="mt-2 text-sm leading-6 text-slate-200">{narrationOutput.whyThisHelps}</p>

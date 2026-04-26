@@ -75,33 +75,33 @@ export function getAvailabilityStatusBadge(summary: AvailabilitySummary | undefi
   if (!summary || summary.status === "checking_not_configured" || summary.refreshSource === "not_configured") {
     return {
       label: "Unknown availability",
-      className: "bg-ink/8 text-ink/55",
+      className: "bg-white/10 text-slate-200",
     };
   }
 
   if (summary.refreshSkippedReason === "free_tier_quota") {
     return {
       label: "PricesAPI quota-limited",
-      className: "bg-clay/12 text-clay",
+      className: "bg-rose-400/16 text-rose-100",
     };
   }
 
   if (summary.refreshSource === "live") {
     return {
       label: "Fresh price",
-      className: "bg-moss/12 text-moss",
+      className: "bg-emerald-400/20 text-emerald-100",
     };
   }
 
   if (summary.refreshSource === "cached") {
     return {
       label: "Cached price from PricesAPI",
-      className: "bg-gold/18 text-ink",
+      className: "bg-amber-300/20 text-amber-100",
     };
   }
 
   return {
     label: "Unknown availability",
-    className: "bg-ink/8 text-ink/55",
+    className: "bg-white/10 text-slate-200",
   };
 }
