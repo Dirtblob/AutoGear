@@ -15,7 +15,7 @@ const displayFont = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "LifeUpgrade",
+  title: "AutoGear",
   description: "Ranked product upgrades for your current setup.",
 };
 

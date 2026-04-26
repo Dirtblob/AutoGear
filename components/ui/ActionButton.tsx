@@ -4,12 +4,13 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 
 const variantClasses = {
-  primary: "bg-ink text-white hover:bg-moss",
-  accent: "bg-gold text-ink hover:bg-white",
-  success: "bg-moss text-white hover:bg-ink",
-  secondary: "border border-ink/10 bg-white text-ink hover:border-moss/30 hover:bg-mist",
-  glass: "border border-white/15 bg-white/8 text-white hover:bg-white/12 hover:text-white",
-  danger: "bg-clay text-white hover:bg-ink",
+  primary:
+    "border border-cyan-300/35 bg-gradient-to-r from-cyan-400 to-teal-300 text-slate-950 shadow-[0_12px_30px_rgba(45,212,191,0.25)] hover:brightness-105",
+  accent: "border border-cyan-200/25 bg-cyan-100/95 text-slate-900 hover:bg-cyan-50",
+  success: "border border-emerald-300/35 bg-emerald-500 text-white hover:bg-emerald-400",
+  secondary: "border border-white/15 bg-white/5 text-slate-100 hover:border-cyan-300/35 hover:bg-white/10",
+  glass: "border border-white/20 bg-white/10 text-white hover:border-cyan-300/30 hover:bg-white/15 hover:text-white",
+  danger: "border border-rose-300/30 bg-rose-500/90 text-white hover:bg-rose-400",
 } as const;
 
 type ActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -33,7 +34,7 @@ export function ActionButton({
     <button
       {...props}
       disabled={pending || props.disabled}
-      className={`inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
         fullWidth ? "w-full" : ""
       } ${variantClasses[variant]} ${className}`}
     >

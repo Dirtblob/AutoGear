@@ -77,26 +77,26 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
   return (
     <div className="space-y-8">
       <section className="grid gap-5 xl:grid-cols-[1.14fr_0.86fr]">
-        <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/88 p-6 shadow-panel backdrop-blur md:p-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-moss">Inventory</p>
-          <h1 className="mt-3 font-display text-3xl font-semibold md:text-5xl">{profile.name}&rsquo;s current setup</h1>
-          <p className="mt-4 max-w-3xl leading-7 text-ink/68">
+        <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_24px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl md:p-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">Inventory</p>
+          <h1 className="mt-3 font-display text-3xl font-semibold text-white md:text-5xl">{profile.name}&rsquo;s current setup</h1>
+          <p className="mt-4 max-w-3xl leading-7 text-slate-300">
             Track what the user already owns before scoring upgrades. Exact model and configuration details make the
             recommendation engine more confident about fit, value, and compatibility.
           </p>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[1.5rem] bg-mist p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">Items tracked</p>
-              <p className="mt-2 font-display text-3xl font-semibold">{inventory.length}</p>
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Items tracked</p>
+              <p className="mt-2 font-display text-3xl font-semibold text-slate-100">{inventory.length}</p>
             </div>
-            <div className="rounded-[1.5rem] bg-mist p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">Exact configs added</p>
-              <p className="mt-2 font-display text-3xl font-semibold">{itemsWithExactModel}</p>
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Exact configs added</p>
+              <p className="mt-2 font-display text-3xl font-semibold text-slate-100">{itemsWithExactModel}</p>
             </div>
-            <div className="rounded-[1.5rem] bg-mist p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">Budget context</p>
-              <p className="mt-2 font-display text-3xl font-semibold">{formatUsd(profile.budgetUsd)}</p>
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Budget context</p>
+              <p className="mt-2 font-display text-3xl font-semibold text-slate-100">{formatUsd(profile.budgetUsd)}</p>
             </div>
           </div>
 
@@ -108,20 +108,20 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
             </form>
             <Link
               href="/recommendations"
-              className="inline-flex items-center justify-center rounded-full border border-ink/12 px-5 py-3 text-sm font-semibold text-ink/72 transition hover:bg-mist"
+              className="inline-flex items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-cyan-300/35 hover:bg-white/10"
             >
               View current ranking
             </Link>
-            <div className="rounded-[1.5rem] bg-[linear-gradient(135deg,rgba(23,33,31,0.96),rgba(66,104,90,0.92))] px-4 py-3 text-sm leading-6 text-white/76">
+            <div className="rounded-[1.5rem] border border-cyan-300/20 bg-[linear-gradient(135deg,rgba(15,23,42,0.95),rgba(8,47,73,0.9))] px-4 py-3 text-sm leading-6 text-slate-200/85">
               Best live-demo move: load demo inventory, then generate recommendations so the score jumps are obvious.
             </div>
           </div>
         </div>
 
-        <aside className="rounded-[2rem] bg-[linear-gradient(145deg,rgba(23,33,31,1)_0%,rgba(66,104,90,0.95)_100%)] p-6 text-white shadow-panel md:p-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-gold">Demo inventory</p>
+        <aside className="rounded-[2rem] border border-cyan-300/20 bg-[linear-gradient(145deg,rgba(8,47,73,0.96)_0%,rgba(6,78,59,0.92)_100%)] p-6 text-white shadow-[0_24px_70px_rgba(2,6,23,0.55)] md:p-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-100">Demo inventory</p>
           <h2 className="mt-3 font-display text-2xl font-semibold">One-click hackathon scenario</h2>
-          <ul className="mt-4 space-y-3 text-sm leading-6 text-white/78">
+          <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-200/85">
             <li>MacBook Air M1 with 8GB RAM</li>
             <li>No external monitor</li>
             <li>Basic mouse</li>
@@ -134,22 +134,22 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
               Load demo inventory
             </ActionButton>
           </form>
-          <p className="mt-3 text-xs leading-5 text-white/58">
+          <p className="mt-3 text-xs leading-5 text-slate-300/75">
             This replaces the current inventory so the recommendations page can demo obvious upgrade gaps immediately.
           </p>
         </aside>
       </section>
 
-      <section id="manual-entry" className="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-panel backdrop-blur md:p-8">
+      <section id="manual-entry" className="rounded-[2rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_24px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl md:p-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-clay">Manual entry</p>
-            <h2 className="mt-3 font-display text-2xl font-semibold">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/75">Manual entry</p>
+            <h2 className="mt-3 font-display text-2xl font-semibold text-white">
               {editingItem ? "Edit inventory item" : "Add inventory item"}
             </h2>
-            <p className="mt-3 max-w-3xl leading-7 text-ink/66">
-              Manual entry comes first for the MVP. Quick-add a category, then capture brand, model, config, and notes
-              so the scoring stays explainable.
+            <p className="mt-3 max-w-3xl leading-7 text-slate-300">
+              Manual entry comes first. Quick-add a category, then capture brand, model, config, and notes so the
+              scoring stays explainable.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -159,8 +159,8 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
                 href={`/inventory?category=${category}#manual-entry`}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                   selectedCategory === category
-                    ? "bg-[linear-gradient(135deg,#17211f_0%,#42685a_100%)] text-white"
-                    : "bg-mist text-ink/72 hover:bg-ink/8"
+                    ? "border border-cyan-300/45 bg-cyan-400/20 text-cyan-100"
+                    : "border border-white/10 bg-white/5 text-slate-300 hover:border-cyan-300/35 hover:bg-white/10"
                 }`}
               >
                 {categoryLabels[category]}
@@ -169,7 +169,7 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
           </div>
         </div>
 
-        <div className="mt-6 rounded-[1.4rem] border border-moss/18 bg-[#f3f8f4] p-4 text-sm leading-6 text-ink/72">
+        <div className="mt-6 rounded-[1.4rem] border border-cyan-300/25 bg-cyan-500/8 p-4 text-sm leading-6 text-slate-200">
           Confidence tip: the more specific the current setup is, the better the engine can tell whether a monitor,
           stand, webcam, or chair is truly the right next purchase.
         </div>
@@ -198,7 +198,7 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-moss">Current inventory</p>
-            <h2 className="mt-2 font-display text-2xl font-semibold">What the engine sees right now</h2>
+            <h2 className="mt-2 font-display text-2xl font-semibold text-white">What the engine sees right now</h2>
           </div>
           {inventory.length > 0 ? (
             <form action={generateRecommendationsAction}>
@@ -243,7 +243,7 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
                   <div className="flex flex-wrap gap-3">
                     <Link
                       href={`/inventory?edit=${item.id}&category=${item.category}#manual-entry`}
-                      className="rounded-full border border-ink/12 px-4 py-2 text-sm font-semibold text-ink/72 transition hover:bg-mist"
+                      className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-300/35 hover:bg-white/10"
                     >
                       Edit
                     </Link>

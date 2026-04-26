@@ -266,7 +266,7 @@ export function ScanReview({ summary }: { summary: ScanSummary | null }) {
           </div>
 
           <div className="rounded-[1.5rem] border border-gold/20 bg-gold/10 p-4 text-sm leading-6 text-ink/74">
-            Video is processed locally in your browser for the MVP. Only approved inventory items are saved.
+            Video is processed locally in your browser. Only approved inventory items are saved.
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

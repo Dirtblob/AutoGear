@@ -159,7 +159,7 @@ export default async function AlertsPage() {
       )}
 
       <section className="rounded-2xl border border-dashed border-ink/15 bg-white/80 p-5 text-sm leading-6 text-ink/65 shadow-soft">
-        Email and push delivery are future work. For the MVP, watchlist alerts stay in-app so the demo remains local
+        Email and push delivery are future work. For now, watchlist alerts stay in-app so the experience remains local
         and dependency-light.
       </section>
     </div>

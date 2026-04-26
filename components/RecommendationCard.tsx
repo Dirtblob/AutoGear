@@ -49,14 +49,14 @@ export function RecommendationCard({ recommendation, availability, narration, na
       ];
 
   return (
-    <article className="rounded-[1.85rem] border border-white/70 bg-white/92 p-6 shadow-panel backdrop-blur">
+    <article className="rounded-[1.85rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_24px_65px_rgba(2,6,23,0.55)] backdrop-blur-xl">
       <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-clay">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">
             {categoryLabels[product.category]}
           </p>
-          <h2 className="mt-2 font-display text-2xl font-semibold">{product.name}</h2>
-          <p className="mt-1 text-sm font-medium text-ink/55">
+          <h2 className="mt-2 font-display text-2xl font-semibold text-white">{product.name}</h2>
+          <p className="mt-1 text-sm font-medium text-slate-400">
             {product.brand} · {displayedPrice} · {availability?.label ?? "Checking not configured"}
           </p>
         </div>
@@ -69,15 +69,15 @@ export function RecommendationCard({ recommendation, availability, narration, na
           ["Fit", recommendation.fitScore],
           ["Trait delta", recommendation.traitDeltaScore],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-ink/8 bg-mist/70 p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">{label}</p>
-            <p className="mt-1 font-display text-2xl font-semibold text-ink">{value}/100</p>
+          <div key={label} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</p>
+            <p className="mt-1 font-display text-2xl font-semibold text-slate-100">{value}/100</p>
           </div>
         ))}
       </div>
 
-      <div className="mt-5 rounded-[1.4rem] bg-[linear-gradient(135deg,rgba(23,33,31,1),rgba(66,104,90,0.94))] p-4 text-white">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
+      <div className="mt-5 rounded-[1.4rem] border border-cyan-300/20 bg-[linear-gradient(135deg,rgba(8,47,73,0.95),rgba(6,78,59,0.9))] p-4 text-white">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100/70">
           {narration ? `Narrator layer: ${narratorSourceLabel(narrationSource)}` : "Personal summary"}
         </p>
         <p className="mt-3 font-display text-xl font-semibold text-white">{narration?.headline ?? product.name}</p>
@@ -86,9 +86,9 @@ export function RecommendationCard({ recommendation, availability, narration, na
 
       <dl className="mt-5 grid gap-3">
         {explanationRows.map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-ink/8 bg-mist/65 p-4">
-            <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">{label}</dt>
-            <dd className="mt-1 text-sm leading-6 text-ink/70">{value}</dd>
+          <div key={label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</dt>
+            <dd className="mt-1 text-sm leading-6 text-slate-300">{value}</dd>
           </div>
         ))}
       </dl>
@@ -104,24 +104,24 @@ export function RecommendationCard({ recommendation, availability, narration, na
       </div>
 
       {narration?.followUpQuestion ? (
-        <div className="mt-5 rounded-2xl border border-dashed border-moss/20 bg-white p-4 text-sm leading-6 text-ink/68">
+        <div className="mt-5 rounded-2xl border border-dashed border-cyan-300/30 bg-white/5 p-4 text-sm leading-6 text-slate-300">
           {narration.followUpQuestion}
         </div>
       ) : null}
 
       <div className="mt-5 flex flex-wrap gap-2">
         {product.solves.slice(0, 3).map((problem) => (
-          <span key={problem} className="rounded-full bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-moss shadow-[inset_0_0_0_1px_rgba(66,104,90,0.14)]">
+          <span key={problem} className="rounded-full bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100 shadow-[inset_0_0_0_1px_rgba(45,212,191,0.22)]">
             {problem.replaceAll("_", " ")}
           </span>
         ))}
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-4 border-t border-ink/8 pt-4">
-        <span className="rounded-full bg-ink/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">
+      <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
+        <span className="rounded-full bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
           {recommendation.fit} fit
         </span>
-        <Link href={`/products/${product.id}`} className="text-sm font-semibold text-moss hover:text-ink">
+        <Link href={`/products/${product.id}`} className="text-sm font-semibold text-cyan-200 hover:text-cyan-100">
           Details
         </Link>
       </div>

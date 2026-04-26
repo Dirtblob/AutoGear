@@ -53,7 +53,7 @@ export const toastRegistry = {
   },
   price_refresh_quota_blocked: {
     title: "Refresh paused by quota",
-    description: "No minute, daily, or monthly PricesAPI capacity was available, so LifeUpgrade kept cached prices.",
+    description: "No minute, daily, or monthly PricesAPI capacity was available, so AutoGear kept cached prices.",
     tone: "info",
   },
   gemma_explanation_ready: {
@@ -63,7 +63,7 @@ export const toastRegistry = {
   },
   gemma_explanation_fallback: {
     title: "Deterministic fallback used",
-    description: "Gemma was missing, unavailable, or returned invalid JSON, so LifeUpgrade used deterministic explanation copy.",
+    description: "Gemma was missing, unavailable, or returned invalid JSON, so AutoGear used deterministic explanation copy.",
     tone: "info",
   },
   product_saved: {
@@ -103,7 +103,7 @@ export const toastRegistry = {
 export type ToastId = keyof typeof toastRegistry;
 
 export function buildToastHref(path: string, toast: ToastId, tone?: ToastTone): string {
-  const url = new URL(path, "http://lifeupgrade.local");
+  const url = new URL(path, "http://autogear.local");
   url.searchParams.set("toast", toast);
 
   if (tone) {

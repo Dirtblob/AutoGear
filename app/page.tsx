@@ -63,11 +63,11 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-10 lg:space-y-12">
-      <section className="overflow-hidden rounded-[2.35rem] bg-[linear-gradient(145deg,rgba(23,33,31,1)_0%,rgba(32,47,43,1)_42%,rgba(66,104,90,0.96)_100%)] p-6 text-white shadow-panel md:p-10">
+      <section className="overflow-hidden rounded-[2.35rem] border border-cyan-300/20 bg-[linear-gradient(145deg,rgba(2,6,23,0.98)_0%,rgba(8,47,73,0.94)_46%,rgba(6,78,59,0.9)_100%)] p-6 text-white shadow-[0_30px_90px_rgba(2,6,23,0.6)] md:p-10">
         <div className="grid gap-8 xl:grid-cols-[1.08fr_0.92fr] xl:items-stretch">
           <div className="flex flex-col justify-between gap-8">
             <div className="space-y-6">
-              <div className="inline-flex w-fit rounded-full border border-white/15 bg-white/8 px-4 py-2 text-sm text-white/75">
+              <div className="inline-flex w-fit rounded-full border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-sm text-cyan-100/80">
                 Explainable upgrade engine
               </div>
               <div className="max-w-4xl space-y-5">
@@ -75,7 +75,7 @@ export default async function HomePage() {
                   Turn a messy setup into a clean, judge-ready upgrade story.
                 </h1>
                 <p className="max-w-2xl text-lg leading-8 text-white/72">
-                  LifeUpgrade scores what someone already owns, what hurts, and what constraints matter most, then
+                  AutoGear scores what someone already owns, what hurts, and what constraints matter most, then
                   ranks the upgrades with reasons clear enough to present in under three minutes.
                 </p>
               </div>
@@ -144,15 +144,15 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="rounded-[1.9rem] border border-gold/20 bg-gold/10 p-5 text-ink">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-clay">Why it demos well</p>
+            <div className="rounded-[1.9rem] border border-white/10 bg-slate-900/70 p-5 text-slate-100 backdrop-blur-xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200/80">Why it demos well</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
                 {[
                   "The hero score makes the priority obvious immediately.",
                   "Every recommendation includes a personal explanation and tradeoffs.",
                   "The UI is compact enough to screenshot cleanly without feeling cramped.",
                 ].map((point) => (
-                  <div key={point} className="rounded-[1.25rem] bg-white/70 p-4 text-sm leading-6 text-ink/70">
+                  <div key={point} className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4 text-sm leading-6 text-slate-300">
                     {point}
                   </div>
                 ))}
@@ -177,10 +177,10 @@ export default async function HomePage() {
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-moss">Catalog preview</p>
-            <h2 className="font-display text-2xl font-semibold">Seed products ready for scoring</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">Catalog preview</p>
+            <h2 className="font-display text-2xl font-semibold text-white">Seed products ready for scoring</h2>
           </div>
-          <Link href="/recommendations" className="text-sm font-semibold text-moss hover:text-ink">
+          <Link href="/recommendations" className="text-sm font-semibold text-cyan-200 hover:text-cyan-100">
             See rankings
           </Link>
         </div>

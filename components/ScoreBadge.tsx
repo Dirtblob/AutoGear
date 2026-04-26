@@ -5,9 +5,9 @@ function bandForScore(score: number): string {
 }
 
 function colorForScore(score: number): string {
-  if (score >= 82) return "#42685a";
-  if (score >= 66) return "#e0ab45";
-  return "#b76d4f";
+  if (score >= 82) return "#2dd4bf";
+  if (score >= 66) return "#fbbf24";
+  return "#fb7185";
 }
 
 export function ScoreBadge({
@@ -24,15 +24,15 @@ export function ScoreBadge({
 
   return (
     <div
-      className={`grid shrink-0 place-items-center rounded-full p-[0.35rem] shadow-[0_16px_40px_rgba(23,33,31,0.16)] ${dimensions}`}
+      className={`grid shrink-0 place-items-center rounded-full p-[0.35rem] shadow-[0_20px_44px_rgba(8,47,73,0.5)] ${dimensions}`}
       style={{
-        background: `conic-gradient(${ringColor} ${Math.max(10, score)}%, rgba(255,255,255,0.18) 0)`,
+        background: `conic-gradient(${ringColor} ${Math.max(10, score)}%, rgba(148,163,184,0.25) 0)`,
       }}
     >
-      <div className={`grid place-items-center rounded-full bg-white text-center shadow-inner ${inner}`}>
+      <div className={`grid place-items-center rounded-full border border-white/10 bg-slate-950 text-center shadow-inner ${inner}`}>
         <div>
-          <p className={`font-display font-bold leading-none text-ink ${scoreText}`}>{score}</p>
-          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink/45">Score</p>
+          <p className={`font-display font-bold leading-none text-slate-100 ${scoreText}`}>{score}</p>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Score</p>
           <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ringColor }}>
             {bandForScore(score)}
           </p>

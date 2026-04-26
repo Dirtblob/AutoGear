@@ -7,7 +7,7 @@ import { ActionButton } from "@/components/ui/ActionButton";
 import type { InventoryFormActionState } from "@/app/inventory/actions";
 
 function inputClassName(): string {
-  return "w-full rounded-[1.2rem] border border-ink/10 bg-mist/75 px-4 py-3 outline-none ring-moss/20 transition focus:border-moss/30 focus:ring-4";
+  return "w-full rounded-[1.2rem] border border-white/15 bg-slate-900/60 px-4 py-3 text-slate-100 outline-none ring-cyan-300/20 transition placeholder:text-slate-400 focus:border-cyan-300/45 focus:ring-4";
 }
 
 const conditionOptions = [
@@ -76,7 +76,7 @@ export function InventoryForm({
       {item ? <input type="hidden" name="itemId" value={item.id} /> : null}
 
       {state.error ? (
-        <div className="rounded-[1.4rem] border border-clay/20 bg-[#fff5f3] p-4 text-sm text-clay" aria-live="polite">
+        <div className="rounded-[1.4rem] border border-rose-300/35 bg-rose-500/10 p-4 text-sm text-rose-100" aria-live="polite">
           <p className="font-semibold">{state.error}</p>
           {errors.length > 0 ? (
             <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -99,18 +99,18 @@ export function InventoryForm({
       />
 
       {state.fieldErrors.specsJson ? (
-        <p className="text-sm font-medium text-clay" aria-live="polite">
+        <p className="text-sm font-medium text-rose-200" aria-live="polite">
           {state.fieldErrors.specsJson}
         </p>
       ) : (
-        <p className="text-xs leading-5 text-ink/52">
+        <p className="text-xs leading-5 text-slate-400">
           Exact model and imported specs improve recommendation confidence and compatibility reasoning.
         </p>
       )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <label className="space-y-2">
-          <span className="text-sm font-medium text-ink/72">Condition</span>
+          <span className="text-sm font-medium text-slate-300">Condition</span>
           <select
             name="condition"
             defaultValue={(item?.condition ?? "unknown").toUpperCase()}
@@ -126,7 +126,7 @@ export function InventoryForm({
         </label>
 
         <label className="space-y-2">
-          <span className="text-sm font-medium text-ink/72">Age in years</span>
+          <span className="text-sm font-medium text-slate-300">Age in years</span>
           <input
             type="number"
             min="0"
@@ -140,7 +140,7 @@ export function InventoryForm({
       </div>
 
       <label className="space-y-2">
-        <span className="text-sm font-medium text-ink/72">Notes</span>
+        <span className="text-sm font-medium text-slate-300">Notes</span>
         <textarea
           name="notes"
           defaultValue={item?.notes ?? ""}
@@ -162,7 +162,7 @@ export function InventoryForm({
         {item ? (
           <a
             href="/inventory"
-            className="rounded-full border border-ink/12 px-5 py-3 text-sm font-semibold text-ink/72 transition hover:bg-mist"
+            className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-cyan-300/35 hover:bg-white/10"
           >
             Cancel edit
           </a>

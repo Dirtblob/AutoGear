@@ -48,7 +48,7 @@ interface ProductSearchApiResponse {
 }
 
 const inputClassName =
-  "w-full rounded-[1.2rem] border border-ink/10 bg-mist/75 px-4 py-3 outline-none ring-moss/20 transition focus:border-moss/30 focus:ring-4";
+  "w-full rounded-[1.2rem] border border-white/15 bg-slate-900/60 px-4 py-3 text-slate-100 outline-none ring-cyan-300/20 transition placeholder:text-slate-400 focus:border-cyan-300/45 focus:ring-4";
 
 function humanizeKey(key: string): string {
   return key
@@ -279,9 +279,9 @@ export function DeviceAutocomplete({
         type="button"
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => selectResult(result)}
-        className="flex w-full gap-3 border-b border-ink/8 px-4 py-3 text-left transition last:border-b-0 hover:bg-mist"
+        className="flex w-full gap-3 border-b border-white/10 px-4 py-3 text-left transition last:border-b-0 hover:bg-white/5"
       >
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-mist text-[11px] font-semibold text-ink/45">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-800 text-[11px] font-semibold text-slate-400">
           {result.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={result.imageUrl} alt="" className="h-full w-full object-cover" />
@@ -291,17 +291,17 @@ export function DeviceAutocomplete({
         </div>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-ink">{result.title}</span>
-            <span className="rounded-full bg-mist px-2 py-0.5 text-[11px] font-semibold text-ink/55">
+            <span className="font-semibold text-slate-100">{result.title}</span>
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-slate-300">
               {resultLabel(result)}
             </span>
           </span>
-          <span className="mt-1 block text-xs text-ink/55">{resultDetails(result) || sourceLabel(result)}</span>
-          {price ? <span className="mt-1 block text-xs font-semibold text-moss">{price}</span> : null}
+          <span className="mt-1 block text-xs text-slate-400">{resultDetails(result) || sourceLabel(result)}</span>
+          {price ? <span className="mt-1 block text-xs font-semibold text-cyan-200">{price}</span> : null}
           {badges.length > 0 ? (
             <span className="mt-2 flex flex-wrap gap-1.5">
               {badges.map((badge) => (
-                <span key={badge} className="rounded-full bg-mist px-2 py-1 text-[11px] font-semibold text-ink/58">
+                <span key={badge} className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-semibold text-slate-300">
                   {badge}
                 </span>
               ))}
@@ -317,7 +317,7 @@ export function DeviceAutocomplete({
 
     return (
       <>
-        <div className="border-b border-ink/8 bg-mist/60 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/48">
+        <div className="border-b border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
           {title}
         </div>
         {groupResults.map(renderResult)}
@@ -329,7 +329,7 @@ export function DeviceAutocomplete({
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <label className="space-y-2">
-          <span className="text-sm font-medium text-ink/72">Category</span>
+          <span className="text-sm font-medium text-slate-300">Category</span>
           <select
             name="category"
             value={category}
@@ -350,7 +350,7 @@ export function DeviceAutocomplete({
         </label>
 
         <label className="relative space-y-2 md:col-span-2">
-          <span className="text-sm font-medium text-ink/72">Device lookup</span>
+          <span className="text-sm font-medium text-slate-300">Device lookup</span>
           <input
             value={query}
             onChange={(event) => {
@@ -366,19 +366,19 @@ export function DeviceAutocomplete({
           />
 
           {isOpen && query.trim().length >= 2 ? (
-            <div className="absolute z-20 mt-2 max-h-96 w-full overflow-y-auto rounded-[1.2rem] border border-ink/10 bg-white shadow-panel">
+            <div className="absolute z-20 mt-2 max-h-96 w-full overflow-y-auto rounded-[1.2rem] border border-white/10 bg-slate-950/96 shadow-[0_25px_70px_rgba(2,6,23,0.65)] backdrop-blur-xl">
               {isLoading ? (
-                <div className="px-4 py-3 text-sm font-medium text-ink/58">Searching devices...</div>
+                <div className="px-4 py-3 text-sm font-medium text-slate-300">Searching devices...</div>
               ) : errorMessage ? (
-                <div className="px-4 py-3 text-sm font-medium text-clay">{errorMessage}</div>
+                <div className="px-4 py-3 text-sm font-medium text-rose-200">{errorMessage}</div>
               ) : results.length === 0 ? (
-                <div className="px-4 py-3 text-sm font-medium text-ink/58">
+                <div className="px-4 py-3 text-sm font-medium text-slate-300">
                   No matching devices found. You can still add this as a custom device.
                 </div>
               ) : (
                 <>
                   {hasOnlyCustomResults ? (
-                    <div className="px-4 py-3 text-sm font-medium text-ink/58">
+                    <div className="px-4 py-3 text-sm font-medium text-slate-300">
                       No rated catalog or Best Buy matches. You can add this as a custom device.
                     </div>
                   ) : null}
@@ -392,7 +392,7 @@ export function DeviceAutocomplete({
         </label>
 
         <label className="space-y-2">
-          <span className="text-sm font-medium text-ink/72">Brand</span>
+          <span className="text-sm font-medium text-slate-300">Brand</span>
           <input
             name="brand"
             value={brand}
@@ -408,7 +408,7 @@ export function DeviceAutocomplete({
         </label>
 
         <label className="space-y-2">
-          <span className="text-sm font-medium text-ink/72">Model</span>
+          <span className="text-sm font-medium text-slate-300">Model</span>
           <input
             name="model"
             value={model}
@@ -424,7 +424,7 @@ export function DeviceAutocomplete({
         </label>
 
         <label className="space-y-2">
-          <span className="text-sm font-medium text-ink/72">Exact model/config</span>
+          <span className="text-sm font-medium text-slate-300">Exact model/config</span>
           <input
             name="exactModel"
             value={exactModel}
@@ -451,35 +451,35 @@ export function DeviceAutocomplete({
         <button
           type="button"
           onClick={switchToManualEntry}
-          className="rounded-full border border-ink/10 bg-white px-4 py-2 text-sm font-semibold text-ink/70 transition hover:bg-mist"
+          className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-300/35 hover:bg-white/10"
         >
           I don&apos;t see my device
         </button>
       ) : null}
 
       {selectedResult && !selectedResult.hasCatalogRatings ? (
-        <div className="rounded-[1.4rem] border border-dashed border-gold/30 bg-gold/8 p-4 text-sm leading-6 text-ink/62">
+        <div className="rounded-[1.4rem] border border-dashed border-amber-300/40 bg-amber-300/10 p-4 text-sm leading-6 text-slate-200">
           {resultLabel(selectedResult)} filled the manual fields. This will save as a custom, unrated inventory item.
         </div>
       ) : manualMode && !selectedResult ? (
-        <div className="rounded-[1.4rem] border border-dashed border-ink/14 bg-white p-4 text-sm leading-6 text-ink/62">
+        <div className="rounded-[1.4rem] border border-dashed border-white/15 bg-white/5 p-4 text-sm leading-6 text-slate-300">
           Manual entry will still be scored, but exact device selection unlocks normalized specs, trait deltas, and better
           explanations.
         </div>
       ) : null}
 
       {selectedResult?.hasCatalogRatings ? (
-        <div className="rounded-[1.4rem] border border-moss/18 bg-[#f3f8f4] p-4">
+        <div className="rounded-[1.4rem] border border-cyan-300/25 bg-cyan-500/8 p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm font-semibold text-moss">Device intelligence imported</p>
-              <p className="mt-1 text-xs text-ink/52">
+              <p className="text-sm font-semibold text-cyan-100">Device intelligence imported</p>
+              <p className="mt-1 text-xs text-slate-400">
                 {resultDetails(selectedResult) || "Catalog match selected"}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {topTraitBadges(selectedResult, 4).map((badge) => (
-                <span key={badge} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-ink/62">
+                <span key={badge} className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">
                   {badge}
                 </span>
               ))}
@@ -488,7 +488,7 @@ export function DeviceAutocomplete({
           <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="flex flex-wrap gap-2">
               {importedSpecEntries.map(([key, value]) => (
-                <span key={String(key)} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-ink/68">
+                <span key={String(key)} className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-slate-200">
                   {humanizeKey(key)}: {formatSpecValue(value)}
                 </span>
               ))}

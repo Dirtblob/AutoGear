@@ -85,28 +85,28 @@ function humanize(value: string): string {
 }
 
 function scoreTone(score: number): string {
-  if (score >= 80) return "bg-moss text-white";
-  if (score >= 60) return "bg-gold text-ink";
-  return "bg-clay text-white";
+  if (score >= 80) return "bg-emerald-500/85 text-white";
+  if (score >= 60) return "bg-amber-300 text-slate-900";
+  return "bg-rose-500/85 text-white";
 }
 
 function pillTone(enabled: boolean): string {
   return enabled
-    ? "bg-ink text-white shadow-soft"
-    : "border border-ink/10 bg-white text-ink/70 hover:border-moss/30 hover:text-ink";
+    ? "border border-cyan-300/45 bg-cyan-400/18 text-cyan-100 shadow-[0_12px_30px_rgba(45,212,191,0.18)]"
+    : "border border-white/10 bg-white/5 text-slate-300 hover:border-cyan-300/35 hover:text-cyan-100";
 }
 
 function availabilityTone(status: string): string {
-  if (status === "available") return "bg-moss/12 text-moss";
-  if (status === "checking_not_configured") return "bg-gold/18 text-ink";
-  return "bg-clay/10 text-clay";
+  if (status === "available") return "bg-emerald-500/20 text-emerald-100";
+  if (status === "checking_not_configured") return "bg-amber-300/20 text-amber-100";
+  return "bg-rose-500/20 text-rose-100";
 }
 
 function priorityTone(priority: string): string {
-  if (priority === "critical") return "bg-clay text-white";
-  if (priority === "high") return "bg-gold text-ink";
-  if (priority === "medium") return "bg-moss text-white";
-  return "bg-ink/10 text-ink";
+  if (priority === "critical") return "bg-rose-500/85 text-white";
+  if (priority === "high") return "bg-amber-300 text-slate-900";
+  if (priority === "medium") return "bg-emerald-500/85 text-white";
+  return "bg-white/10 text-slate-300";
 }
 
 function narratorSourceLabel(source: RecommendationNarrationSource | null | undefined): string {
@@ -254,42 +254,42 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
   return (
     <div className="space-y-8">
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="overflow-hidden rounded-[2rem] bg-[linear-gradient(145deg,rgba(23,33,31,1)_0%,rgba(31,46,42,1)_46%,rgba(66,104,90,0.96)_100%)] text-white shadow-panel">
-          <div className="bg-[radial-gradient(circle_at_top_left,rgba(224,171,69,0.34),transparent_18rem),radial-gradient(circle_at_bottom_right,rgba(66,104,90,0.32),transparent_22rem)] p-8 md:p-10">
+        <div className="overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-[linear-gradient(145deg,rgba(2,6,23,0.98)_0%,rgba(8,47,73,0.94)_46%,rgba(6,78,59,0.9)_100%)] text-white shadow-[0_30px_90px_rgba(2,6,23,0.6)]">
+          <div className="bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.26),transparent_19rem),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.24),transparent_22rem)] p-8 md:p-10">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
+              <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">
                 Recommendations dashboard
               </span>
-              <span className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/65">
+              <span className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200/80">
                 {sortOptions.find((option) => option.value === sort)?.label}
               </span>
             </div>
 
             <div className="mt-6 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
               <div>
-                <p className="text-sm font-medium text-white/65">
+                <p className="text-sm font-medium text-slate-200/80">
                   Built from the active profile, current inventory, and deterministic category + product scoring.
                 </p>
                 <h1 className="mt-3 max-w-3xl font-display text-4xl font-semibold tracking-tight md:text-5xl">
                   Upgrade opportunities for {profile.name}
                 </h1>
-                <p className="mt-4 max-w-2xl text-base leading-7 text-white/72">
+                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-200/88">
                   {profile.profession} profile, {formatUsd(profile.budgetUsd)} budget, {inventory.length} inventory items, and{" "}
                   {profile.problems.length} reported pain points. Filters refine what shows up without hiding why the
                   engine scored things the way it did.
                 </p>
 
                 {heroProduct ? (
-                  <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/8 p-5 backdrop-blur">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Top next move</p>
+                  <div className="mt-6 rounded-[1.6rem] border border-white/15 bg-white/10 p-5 backdrop-blur">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Top next move</p>
                     <div className="mt-3 flex items-start justify-between gap-4">
                       <div>
                         <h2 className="font-display text-2xl font-semibold">{heroProduct.recommendation.product.name}</h2>
-                        <p className="mt-2 text-sm leading-6 text-white/72">
+                        <p className="mt-2 text-sm leading-6 text-slate-200/88">
                           {heroNarration?.output.explanation ?? heroProduct.recommendation.explanation.problemSolved}
                         </p>
                         {heroNarration ? (
-                          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/50">
+                          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300/75">
                             Explanation source: {narratorSourceLabel(heroNarration.source)}
                           </p>
                         ) : null}
@@ -298,7 +298,7 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/8 p-5 text-sm leading-6 text-white/72 backdrop-blur">
+                  <div className="mt-6 rounded-[1.6rem] border border-white/15 bg-white/10 p-5 text-sm leading-6 text-slate-200/85 backdrop-blur">
                     No products are visible right now. Loosen the active filters to reveal specific models again.
                   </div>
                 )}
@@ -311,8 +311,8 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                   ["Specific models", String(topProductCount)],
                   ["Active filters", String(activeFilterCount)],
                 ].map(([label, value]) => (
-                  <div key={label} className="rounded-3xl border border-white/10 bg-white/8 p-4 backdrop-blur">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">{label}</p>
+                  <div key={label} className="rounded-3xl border border-white/15 bg-white/10 p-4 backdrop-blur">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300/80">{label}</p>
                     <p className="mt-3 font-display text-3xl font-semibold">{value}</p>
                   </div>
                 ))}
@@ -321,15 +321,15 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
           </div>
         </div>
 
-        <aside className="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-panel backdrop-blur">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-moss">Sort and filter</p>
-          <h2 className="mt-3 font-display text-2xl font-semibold">Tune the ranking view</h2>
-          <p className="mt-3 leading-7 text-ink/62">
+        <aside className="rounded-[2rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_24px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">Sort and filter</p>
+          <h2 className="mt-3 font-display text-2xl font-semibold text-white">Tune the ranking view</h2>
+          <p className="mt-3 leading-7 text-slate-300">
             Sort changes how categories and models are ordered. Filters hide options that do not fit the moment.
           </p>
 
           <div className="mt-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">Sort by</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Sort by</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {sortOptions.map((option) => (
                 <Link
@@ -344,7 +344,7 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
           </div>
 
           <div className="mt-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">Filters</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Filters</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {filterOptions.map((option) => {
                 const paramKey =
@@ -370,18 +370,18 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
             </div>
           </div>
 
-          <div className="mt-6 rounded-3xl bg-mist p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">Current setup</p>
-            <p className="mt-3 text-sm leading-7 text-ink/68">
+          <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Current setup</p>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
               {profile.constraints.deskWidthInches}&quot; desk width, {profile.constraints.roomLighting} room lighting,
               {profile.constraints.sharesSpace ? " shared room" : " private room"}, and{" "}
               {profile.constraints.portableSetup ? "portable setup" : "mostly fixed desk"}.
             </p>
           </div>
 
-          <div className="mt-4 rounded-3xl border border-moss/12 bg-[#f3f8f4] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-moss">Narrator guardrail</p>
-            <p className="mt-3 text-sm leading-7 text-ink/68">
+          <div className="mt-4 rounded-3xl border border-cyan-300/25 bg-cyan-500/8 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Narrator guardrail</p>
+            <p className="mt-3 text-sm leading-7 text-slate-200">
               {narratorMode}. Page renders only read cached explanations or deterministic fallback copy. Gemini is
               called only when you generate or refresh an explanation, and it never changes category scores, product
               scores, ranking order, or budget logic.
@@ -421,10 +421,10 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
       <section className="space-y-5">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-clay">1</p>
-            <h2 className="mt-2 font-display text-3xl font-semibold">Your biggest upgrade opportunities</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">1</p>
+            <h2 className="mt-2 font-display text-3xl font-semibold text-white">Your biggest upgrade opportunities</h2>
           </div>
-          <p className="max-w-2xl text-sm leading-6 text-ink/60">
+          <p className="max-w-2xl text-sm leading-6 text-slate-300">
             These are the strongest life gaps based on the current problems, constraints, and the categories that can
             relieve them most directly.
           </p>
@@ -432,20 +432,20 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
 
         <div className="grid gap-5 lg:grid-cols-3">
           {lifeGaps.map((gap) => (
-            <article key={gap.id} className="rounded-[1.75rem] border border-white/70 bg-white/92 p-6 shadow-panel">
+            <article key={gap.id} className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_24px_65px_rgba(2,6,23,0.55)] backdrop-blur-xl">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${priorityTone(gap.priority)}`}>
                     {formatPriority(gap.priority)}
                   </span>
-                  <h3 className="mt-4 font-display text-2xl font-semibold">{gap.label}</h3>
+                  <h3 className="mt-4 font-display text-2xl font-semibold text-white">{gap.label}</h3>
                 </div>
                 <ScoreBadge score={gap.score} />
               </div>
-              <p className="mt-4 leading-7 text-ink/65">{gap.explanation}</p>
+              <p className="mt-4 leading-7 text-slate-300">{gap.explanation}</p>
               <div className="mt-5 flex flex-wrap gap-2">
                 {gap.topCategories.map((label) => (
-                  <span key={label} className="rounded-full bg-mist px-3 py-2 text-xs font-semibold text-ink/65">
+                  <span key={label} className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300">
                     {label}
                   </span>
                 ))}
@@ -458,10 +458,10 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
       <section className="space-y-5">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-clay">2</p>
-            <h2 className="mt-2 font-display text-3xl font-semibold">Recommended categories</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">2</p>
+            <h2 className="mt-2 font-display text-3xl font-semibold text-white">Recommended categories</h2>
           </div>
-          <p className="max-w-2xl text-sm leading-6 text-ink/60">
+          <p className="max-w-2xl text-sm leading-6 text-slate-300">
             Category cards explain why a type of upgrade is important before picking specific models.
           </p>
         </div>
@@ -470,7 +470,7 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
           {visibleCategoryViews.map((categoryView) => (
             <article
               key={categoryView.categoryRecommendation.category}
-              className="rounded-[1.75rem] border border-white/70 bg-white/92 p-6 shadow-panel"
+              className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_24px_65px_rgba(2,6,23,0.55)] backdrop-blur-xl"
             >
               <div className="flex items-start justify-between gap-5">
                 <div>
@@ -478,14 +478,14 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                     <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${priorityTone(categoryView.categoryRecommendation.priority)}`}>
                       {formatPriority(categoryView.categoryRecommendation.priority)} priority
                     </span>
-                    <span className="rounded-full bg-mist px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-ink/55">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
                       {categoryLabels[categoryView.categoryRecommendation.category]}
                     </span>
                   </div>
-                  <h3 className="mt-4 font-display text-2xl font-semibold">
+                  <h3 className="mt-4 font-display text-2xl font-semibold text-white">
                     {categoryLabels[categoryView.categoryRecommendation.category]}
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-ink/58">
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
                     {categoryView.categoryRecommendation.missingOrUpgradeReason}
                   </p>
                 </div>
@@ -513,9 +513,9 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                 <ScoreBreakdownCard breakdown={categoryView.scoreBreakdown} />
               </div>
 
-              <details className="mt-5 rounded-3xl border border-ink/10 bg-mist/55 p-4">
-                <summary className="cursor-pointer list-none text-sm font-semibold text-ink">Why this?</summary>
-                <div className="mt-3 space-y-2 text-sm leading-6 text-ink/68">
+              <details className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-4">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Why this?</summary>
+                <div className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
                   {categoryView.categoryRecommendation.reasons.map((reason) => (
                     <p key={reason}>{reason}</p>
                   ))}
@@ -529,10 +529,10 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
       <section className="space-y-5">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-clay">3</p>
-            <h2 className="mt-2 font-display text-3xl font-semibold">Specific models to consider</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">3</p>
+            <h2 className="mt-2 font-display text-3xl font-semibold text-white">Specific models to consider</h2>
           </div>
-          <p className="max-w-2xl text-sm leading-6 text-ink/60">
+          <p className="max-w-2xl text-sm leading-6 text-slate-300">
             Each category runs through the product recommendation engine so the models below inherit the same profile,
             budget, and constraint context.
           </p>
@@ -551,14 +551,14 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
             {visibleCategoryViews.map((categoryView) => (
               <section
                 key={categoryView.categoryRecommendation.category}
-                className="rounded-[1.75rem] border border-white/70 bg-white/92 p-6 shadow-panel"
+                className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_24px_65px_rgba(2,6,23,0.55)] backdrop-blur-xl"
               >
-                <div className="flex flex-wrap items-end justify-between gap-4 border-b border-ink/10 pb-5">
+                <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-5">
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-moss">
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">
                       {categoryLabels[categoryView.categoryRecommendation.category]}
                     </p>
-                    <h3 className="mt-2 font-display text-2xl font-semibold">
+                    <h3 className="mt-2 font-display text-2xl font-semibold text-white">
                       Best models for {categoryLabels[categoryView.categoryRecommendation.category].toLowerCase()}
                     </h3>
                   </div>
@@ -585,7 +585,7 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                     return (
                       <article
                         key={productView.recommendation.product.id}
-                        className="flex h-full flex-col rounded-[1.5rem] border border-ink/10 bg-mist/35 p-5"
+                        className="flex h-full flex-col rounded-[1.5rem] border border-white/10 bg-white/5 p-5"
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div>
@@ -597,13 +597,13 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                                 {productView.availability.label}
                               </span>
                             </div>
-                            <h4 className="mt-4 font-display text-2xl font-semibold">
+                            <h4 className="mt-4 font-display text-2xl font-semibold text-white">
                               {productView.recommendation.product.name}
                             </h4>
                             {narrationOutput ? (
-                              <p className="mt-2 text-sm font-semibold text-moss">{narrationOutput.headline}</p>
+                              <p className="mt-2 text-sm font-semibold text-cyan-200">{narrationOutput.headline}</p>
                             ) : null}
-                            <p className="mt-2 text-sm font-medium text-ink/58">
+                            <p className="mt-2 text-sm font-medium text-slate-300">
                               {productView.recommendation.product.brand} · {categoryLabels[productView.recommendation.product.category]} ·{" "}
                               {formatUsd(productView.recommendation.product.priceUsd)}
                             </p>
@@ -682,11 +682,11 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                         <DeviceDeltaComparison delta={productView.recommendation.deviceDelta} />
 
                         {narrationOutput ? (
-                          <div className="mt-5 rounded-3xl border border-moss/10 bg-white p-4">
+                          <div className="mt-5 rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-4">
                             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">
                               Narrator layer: {narratorSourceLabel(narration?.source)}
                             </p>
-                            <p className="mt-2 text-sm leading-6 text-ink/68">{narrationOutput.whyThisHelps}</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-200">{narrationOutput.whyThisHelps}</p>
                           </div>
                         ) : null}
 
@@ -712,15 +712,15 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
                           </form>
                           <Link
                             href={`/products/${productView.recommendation.product.id}`}
-                            className="rounded-full border border-ink/10 px-4 py-2 text-sm font-semibold text-ink transition hover:border-moss/30 hover:text-moss"
+                            className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-cyan-300/35 hover:text-cyan-100"
                           >
                             View details
                           </Link>
                         </div>
 
-                        <details className="mt-5 rounded-3xl bg-white p-4">
-                          <summary className="cursor-pointer list-none text-sm font-semibold text-ink">Why this?</summary>
-                          <div className="mt-3 space-y-3 text-sm leading-6 text-ink/68">
+                        <details className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-4">
+                          <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Why this?</summary>
+                          <div className="mt-3 space-y-3 text-sm leading-6 text-slate-300">
                             <p>{narrationOutput?.explanation ?? productView.recommendation.explanation.problemSolved}</p>
                             <p>{narrationOutput?.whyThisHelps ?? productView.recommendation.explanation.whyNow}</p>
                             <p>{narrationOutput?.tradeoffs ?? productView.recommendation.explanation.tradeoff}</p>
@@ -742,26 +742,26 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
       <section className="space-y-5">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-clay">4</p>
-            <h2 className="mt-2 font-display text-3xl font-semibold">What we intentionally did not recommend</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">4</p>
+            <h2 className="mt-2 font-display text-3xl font-semibold text-white">What we intentionally did not recommend</h2>
           </div>
-          <p className="max-w-2xl text-sm leading-6 text-ink/60">
+          <p className="max-w-2xl text-sm leading-6 text-slate-300">
             This keeps the dashboard explainable by showing where the engine deliberately held back.
           </p>
         </div>
 
         <div className="grid gap-5 xl:grid-cols-2">
           {rejections.map((item) => (
-            <article key={item.id} className="rounded-[1.75rem] border border-white/70 bg-white/92 p-6 shadow-panel">
+            <article key={item.id} className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6 shadow-[0_24px_65px_rgba(2,6,23,0.55)] backdrop-blur-xl">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-clay">
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200/80">
                     {item.kind === "model" ? "Model held back" : "Category deprioritized"}
                   </p>
-                  <h3 className="mt-3 font-display text-2xl font-semibold">{item.item}</h3>
-                  <p className="mt-2 text-sm font-medium text-ink/55">{categoryLabels[item.category]}</p>
+                  <h3 className="mt-3 font-display text-2xl font-semibold text-white">{item.item}</h3>
+                  <p className="mt-2 text-sm font-medium text-slate-400">{categoryLabels[item.category]}</p>
                 </div>
-                <span className="rounded-full bg-mist px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-ink/60">
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
                   {item.kind}
                 </span>
               </div>
@@ -779,9 +779,9 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
 
 function DetailBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-3xl bg-white p-4 shadow-[inset_0_0_0_1px_rgba(23,33,31,0.04)]">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-ink/68">{value}</p>
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-300">{value}</p>
     </div>
   );
 }

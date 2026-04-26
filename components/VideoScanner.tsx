@@ -216,7 +216,7 @@ export function VideoScanner() {
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-moss">Camera scan</p>
           <h1 className="mt-3 font-display text-3xl font-semibold md:text-5xl">Walk the space and capture setup estimates</h1>
           <p className="mt-4 max-w-3xl leading-7 text-ink/66">
-            LifeUpgrade samples one frame every {FRAME_SAMPLE_INTERVAL_MS}ms, runs local browser-side object detection,
+            AutoGear samples one frame every {FRAME_SAMPLE_INTERVAL_MS}ms, runs local browser-side object detection,
             and turns repeated detections into inventory suggestions you can review before saving.
           </p>
 
@@ -294,7 +294,7 @@ export function VideoScanner() {
           <div className="rounded-[1.5rem] bg-mist/80 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">Privacy</p>
             <p className="mt-2 text-sm leading-6 text-ink/72">
-              Video is processed locally in your browser for the MVP. Only approved inventory items are saved.
+              Video is processed locally in your browser. Only approved inventory items are saved.
             </p>
           </div>
 

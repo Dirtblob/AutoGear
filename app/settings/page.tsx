@@ -75,7 +75,7 @@ export default async function SettingsPage() {
     <div className="space-y-6">
       <section className="rounded-2xl bg-white p-6 shadow-soft">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-moss">Settings</p>
-        <h1 className="mt-3 text-3xl font-semibold">Privacy controls for the local MVP.</h1>
+        <h1 className="mt-3 text-3xl font-semibold">Privacy controls for your local setup.</h1>
         <p className="mt-3 max-w-2xl leading-7 text-ink/65">
           Sensitive profile fields stay in SQLite instead of localStorage. These controls manage the active local demo
           profile used by onboarding, inventory, and recommendations.

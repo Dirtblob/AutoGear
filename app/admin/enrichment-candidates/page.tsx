@@ -28,7 +28,7 @@ export default async function AdminEnrichmentCandidatesPage() {
             <h1 className="font-display text-3xl font-semibold md:text-4xl">Unrated product candidates</h1>
             <p className="mt-3 max-w-3xl leading-7 text-ink/64">
               These Best Buy and custom inventory selections are not in `device_catalog` yet. They are queued for manual
-              review only; LifeUpgrade does not automatically invent trait ratings, ergonomic specs, or recommendation
+              review only; AutoGear does not automatically invent trait ratings, ergonomic specs, or recommendation
               scores for them.
             </p>
           </div>
